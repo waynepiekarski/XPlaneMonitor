@@ -1,8 +1,6 @@
 package net.waynepiekarski.xplanemonitor;
 
-import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
-import android.text.format.Formatter;
 import android.util.Log;
 import android.widget.TextView;
 
@@ -11,33 +9,37 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
+import java.util.Arrays;
 
-import static android.content.Context.WIFI_SERVICE;
 import static junit.framework.Assert.assertEquals;
 
 
 /*
  *  Listens on a port and processes UDP packets from X-Plane
  */
-public class UDPReceiver extends AsyncTask<Integer, Integer, Long> {
+public class UDPReceiver extends AsyncTask<Integer, UDPReceiver.UDPData, Long> {
     long total;
     long count;
     String buffer;
     TextView statusView;
-    OnReceivePacket callback;
+    OnReceiveUDP callback;
     DatagramSocket socket;
 
-    public static final byte[] sample_groundspeed = new byte[] { 0x44, 0x52, 0x45, 0x46, 0x2B, 0xC0, 0xBB, 0xB0, 0x35, 0x73, 0x69, 0x6D, 0x2F, 0x66, 0x6C, 0x69, 0x67, 0x68, 0x74, 0x6D, 0x6F, 0x64, 0x65, 0x6C, 0x2F, 0x70, 0x6F, 0x73, 0x69, 0x74, 0x69, 0x6F, 0x6E, 0x2F, 0x67, 0x72, 0x6F, 0x75, 0x6E, 0x64, 0x73, 0x70, 0x65, 0x65, 0x64, 0x5B, 0x30, 0x5D };
+    public class UDPData {
+        private byte[] data;
+        public UDPData(byte[] in, int length) {
+            data = Arrays.copyOfRange(in, 0, length);
+        }
+        public byte[] get() { return data; }
+    }
 
-    public interface OnReceivePacket {
-        void onReceive(String data);
+    public interface OnReceiveUDP {
+        void onReceiveUDP(byte[] array);
     }
 
     // Updates statusView with details (if not null)
     // Executes callback on UI thread at finish (if not null)
-    public UDPReceiver(int port, TextView inStatusView, OnReceivePacket inCallback) {
+    public UDPReceiver(int port, TextView inStatusView, OnReceiveUDP inCallback) {
         callback = inCallback;
         statusView = inStatusView;
         execute(port);
@@ -60,21 +62,12 @@ public class UDPReceiver extends AsyncTask<Integer, Integer, Long> {
                 try {
                     socket.receive(packet);
                     packetCount++;
-                    publishProgress(packetCount);
                     Log.d(Const.TAG, "Received packet with " + packet.getLength() + " bytes of data");
                     Log.d(Const.TAG, "Hex dump = [" + bytesToHex(packet.getData(), packet.getLength()) + "]");
                     Log.d(Const.TAG, "Txt dump = [" + bytesToChars(packet.getData(), packet.getLength()) + "]");
+                    UDPData data = new UDPData(buffer, packet.getLength());
 
-                    if ((packet.getLength() >= 5) && (buffer[0] == 'D') && (buffer[1] == 'R') && (buffer[2] == 'E') && (buffer[3] == 'F') && (buffer[4] == '+')) {
-                        // Handle DREF+ packet type here
-                        // ["DREF+"=5bytes] [float=4bytes] ["label/name/var[0]\0"=remaining_bytes]
-                        float f = ByteBuffer.wrap(buffer,+5,4).order(ByteOrder.LITTLE_ENDIAN).getFloat();
-                        int zero;
-                        for (zero = 9; zero < packet.getLength() && buffer[zero] != '\0'; zero++)
-                            ;
-                        String name = new String(buffer, +9, zero-9);
-                        Log.d(Const.TAG, "Parsed DREF+ with float=" + f + " for variable=" + name);
-                    }
+                    publishProgress(data);
                 } catch (SocketTimeoutException e) {
                     // Log.d(Const.TAG, "Timeout, reading again ...");
                 } catch (IOException e) {
@@ -91,16 +84,23 @@ public class UDPReceiver extends AsyncTask<Integer, Integer, Long> {
         return Long.valueOf(packetCount);
     }
 
-    protected void onProgressUpdate(Integer... progress) {
+    @Override
+    protected void onProgressUpdate(UDPData... progress) {
+        assertEquals(1, progress.length);
+        Log.d(Const.TAG, "onProgressUpdate (UI thread)");
         // This runs on the UI thread, we can use progress[0] or the packet text if we want
-        if (statusView != null)
-            statusView.setText("Downloaded " + progress[0]); // TODO: Update this value
+        //if (statusView != null)
+            //statusView.setText("Downloaded " + progress[0]); // TODO: Update this value
+        //if (callbackDREF != null)
+            //callbackDREF.onReceive("Hello world"); // TODO: Update this string
+
         if (callback != null)
-            callback.onReceive("Hello world"); // TODO: Update this string
+            callback.onReceiveUDP(progress[0].get());
     }
 
     protected void onPostExecute(Long result) {
         // This runs on the UI thread after the AsyncTask finishes, nothing to do here
+        Log.d(Const.TAG, "onPostExecute (UI thread)");
     }
 
 

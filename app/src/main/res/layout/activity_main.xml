@@ -9,25 +9,41 @@
 
     <TextView
         android:id="@+id/ipAddress"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
         android:layout_weight="1"
         android:ems="10"
         android:text="WiFi IP Address"
-        tools:layout_editor_absoluteY="0dp"
         tools:layout_editor_absoluteX="0dp"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentStart="true" />
+        tools:layout_editor_absoluteY="0dp" />
 
     <TextView
         android:id="@+id/debugText"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_below="@+id/ipAddress"
         android:ems="10"
         android:text="Status updates here"
         tools:layout_editor_absoluteX="0dp"
-        tools:layout_editor_absoluteY="42dp"
-        android:layout_below="@+id/ipAddress"
-        android:layout_alignParentStart="true" />
+        tools:layout_editor_absoluteY="42dp" />
+
+    <Button
+        android:id="@+id/reset"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:text="Reset" />
+
+    <Button
+        android:id="@+id/simulate"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@+id/reset"
+        android:layout_toEndOf="@+id/reset"
+        android:text="Simulate" />
 
 </RelativeLayout>
