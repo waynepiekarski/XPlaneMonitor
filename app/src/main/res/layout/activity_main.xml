@@ -7,36 +7,42 @@
     android:layout_height="match_parent"
     tools:context="net.waynepiekarski.xplanemonitor.MainActivity">
 
-    <TextView
-        android:id="@+id/ipAddress"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentTop="true"
-        android:layout_weight="1"
-        android:ems="10"
-        android:text="WiFi IP Address"
-        tools:layout_editor_absoluteX="0dp"
-        tools:layout_editor_absoluteY="0dp" />
+        <TextView
+            android:id="@+id/ipAddress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentTop="true"
+            android:layout_weight="1"
+            android:ems="10"
+            android:text="WiFi IP Address"
+            tools:layout_editor_absoluteX="0dp"
+            tools:layout_editor_absoluteY="0dp" />
 
-    <TextView
-        android:id="@+id/debugText"
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentStart="true"
         android:layout_below="@+id/ipAddress"
-        android:ems="10"
-        android:text="Status updates here"
-        tools:layout_editor_absoluteX="0dp"
-        tools:layout_editor_absoluteY="42dp" />
+        android:layout_above="@+id/reset"
+        android:id="@+id/scrollView">
+        <TextView
+            android:id="@+id/debugText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ems="10"
+            android:text="Status updates here"
+            tools:layout_editor_absoluteX="0dp"
+            tools:layout_editor_absoluteY="42dp" />
+    </ScrollView>
 
     <Button
         android:id="@+id/reset"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="Reset"
         android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true"
-        android:text="Reset" />
+        android:layout_centerHorizontal="true" />
 
     <Button
         android:id="@+id/simulate"
