@@ -42,7 +42,10 @@ public class UDPReceiver extends AsyncTask<Integer, UDPReceiver.UDPData, Long> {
     public UDPReceiver(int port, TextView inStatusView, OnReceiveUDP inCallback) {
         callback = inCallback;
         statusView = inStatusView;
-        execute(port);
+        Log.d(Const.TAG, "Created AsyncTask for port " + port);
+        // Needed so we can run multiple AsyncTask without one being starved
+        // From http://stackoverflow.com/questions/4068984/running-multiple-asynctasks-at-the-same-time-not-possible
+        executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, port);
     }
 
     protected Long doInBackground(Integer... ports) {
