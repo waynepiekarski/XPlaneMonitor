@@ -109,7 +109,7 @@ public class UDPReceiver extends AsyncTask<Integer, UDPReceiver.UDPData, Long> {
 
     // Extract all printable ASCII from a byte stream, do not print other chars
     public static String bytesToChars(byte[] bytes, int length) {
-        assertEquals(true, bytes.length > length);
+        assertEquals(true, bytes.length >= length);
         char[] textChars = new char[length * 2];
         for (int j = 0; j < length; j++ ) {
             int v = bytes[j];
@@ -126,7 +126,7 @@ public class UDPReceiver extends AsyncTask<Integer, UDPReceiver.UDPData, Long> {
     // From http://stackoverflow.com/questions/9655181/how-to-convert-a-byte-array-to-a-hex-string-in-java
     final protected static char[] hexArray = "0123456789ABCDEF".toCharArray();
     public static String bytesToHex(byte[] bytes, int length) {
-        assertEquals(true, bytes.length > length);
+        assertEquals(true, bytes.length >= length);
         char[] hexChars = new char[length * 2];
         for ( int j = 0; j < length; j++ ) {
             int v = bytes[j] & 0xFF;
