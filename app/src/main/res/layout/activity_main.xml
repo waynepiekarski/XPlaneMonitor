@@ -74,7 +74,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="n/a"
+            android:text="speedbrake_ratio"
             android:textAlignment="center" />
 
         <TextView
@@ -82,7 +82,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="n/a"
+            android:text="parking_brake_ratio"
             android:textAlignment="center" />
 
         <TextView
@@ -90,7 +90,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="n/a"
+            android:text="left_brake_ratio"
             android:textAlignment="center" />
 
         <TextView
@@ -98,7 +98,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="n/a"
+            android:text="right_brake_ratio"
             android:textAlignment="center" />
 
         <TextView
@@ -106,7 +106,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="n/a"
+            android:text="reverse"
             android:textAlignment="center" />
 
     </LinearLayout>
@@ -124,7 +124,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="n/a"
+            android:text="frame_rate_period"
             android:textAlignment="center" />
 
         <TextView
@@ -132,7 +132,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="n/a"
+            android:text="indicated_airspeed"
             android:textAlignment="center" />
 
         <TextView
@@ -140,7 +140,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="n/a"
+            android:text="elevation"
             android:textAlignment="center" />
 
         <TextView
@@ -148,7 +148,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="n/a"
+            android:text="y_agl"
             android:textAlignment="center" />
 
         <TextView
@@ -156,7 +156,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="n/a"
+            android:text="altitude_ft_pilot"
             android:textAlignment="center" />
 
     </LinearLayout>
