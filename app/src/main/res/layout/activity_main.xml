@@ -1,13 +1,56 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/activity_main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     tools:context="net.waynepiekarski.xplanemonitor.MainActivity">
 
-        <TextView
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/exit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/layout2"
+            android:layout_toStartOf="@+id/reset"
+            android:layout_weight="1"
+            android:text="Exit" />
+
+        <Button
+            android:id="@+id/reset"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_centerHorizontal="true"
+            android:layout_weight="1"
+            android:text="Reset" />
+
+        <Button
+            android:id="@+id/debug"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/layout2"
+            android:layout_toStartOf="@+id/exit"
+            android:layout_weight="1"
+            android:text="Debug" />
+
+        <Button
+            android:id="@+id/simulate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignTop="@+id/reset"
+            android:layout_toEndOf="@+id/reset"
+            android:layout_weight="1"
+            android:text="Simulate" />
+
+    </LinearLayout>
+
+    <TextView
             android:id="@+id/ipAddress"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -18,22 +61,6 @@
             android:text="WiFi IP Address"
             tools:layout_editor_absoluteX="0dp"
             tools:layout_editor_absoluteY="0dp" />
-
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignParentStart="true"
-        android:layout_below="@+id/ipAddress"
-        android:id="@+id/scrollView">
-        <TextView
-            android:id="@+id/debugText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:ems="10"
-            android:text="Status updates here"
-            tools:layout_editor_absoluteX="0dp"
-            tools:layout_editor_absoluteY="42dp" />
-    </ScrollView>
 
     <LinearLayout
         android:id="@+id/layout1"
@@ -129,33 +156,27 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="TextView"
+            android:text="n/a"
             android:textAlignment="center" />
 
     </LinearLayout>
 
-    <Button
-        android:id="@+id/reset"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Reset"
-        android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true" />
+    <ScrollView
+        android:id="@+id/scrollView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_alignParentStart="true"
+        android:layout_below="@+id/ipAddress"
+        android:layout_weight="1">
 
-    <Button
-        android:id="@+id/simulate"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignTop="@+id/reset"
-        android:layout_toEndOf="@+id/reset"
-        android:text="Simulate" />
+        <TextView
+            android:id="@+id/debugText"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:ems="10"
+            android:text="Raw debug output"
+            tools:layout_editor_absoluteX="0dp"
+            tools:layout_editor_absoluteY="42dp" />
+    </ScrollView>
 
-    <Button
-        android:id="@+id/exit"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/layout2"
-        android:layout_toStartOf="@+id/reset"
-        android:text="Exit" />
-
-</RelativeLayout>
+</LinearLayout>

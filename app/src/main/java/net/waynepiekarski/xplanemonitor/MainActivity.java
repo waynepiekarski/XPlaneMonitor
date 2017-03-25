@@ -22,7 +22,7 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
     TextView debugText;
     TextView itemSpeedBrake, itemParkingBrake, itemLeftBrake, itemRightBrake, itemReverseThrust;
     TextView itemFPS, itemIndicatedSpeed, itemAltitudeMSL, itemAltitudeGround, itemAltitudeGauge;
-    Button exitButton, resetButton, simButton;
+    Button exitButton, resetButton, simButton, debugButton;
     TreeMap<String, Float> mapDREF;
     TreeMap<String, String> mapDATA;
     int sequence;
@@ -48,7 +48,8 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
                 Log.d(Const.TAG, "Resetting internal map");
                 mapDREF.clear();
                 mapDATA.clear();
-                updateUI();
+                updateDebugUI();
+                resetIndicators();
             }
         });
         simButton = (Button)findViewById(R.id.simulate);
@@ -59,27 +60,31 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
                 onReceiveUDP(sample_data);
             }
         });
+        debugButton = (Button)findViewById(R.id.debug);
+        debugButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                Log.d(Const.TAG, "Toggle debug mode");
+                if (debugText.getVisibility() == View.VISIBLE) {
+                    debugText.setVisibility(View.INVISIBLE);
+                } else {
+                    debugText.setVisibility(View.VISIBLE);
+                    updateDebugUI();
+                }
+            }
+        });
 
         itemSpeedBrake = (TextView)findViewById(R.id.itemSpeedBrake);
-        itemSpeedBrake.setBackgroundColor(Color.GRAY);
         itemParkingBrake = (TextView)findViewById(R.id.itemParkingBrake);
-        itemParkingBrake.setBackgroundColor(Color.GRAY);
         itemLeftBrake = (TextView)findViewById(R.id.itemLeftBrake);
-        itemLeftBrake.setBackgroundColor(Color.GRAY);
         itemRightBrake = (TextView)findViewById(R.id.itemRightBrake);
-        itemRightBrake.setBackgroundColor(Color.GRAY);
         itemReverseThrust = (TextView)findViewById(R.id.itemReverseThrust);
-        itemReverseThrust.setBackgroundColor(Color.GRAY);
         itemFPS = (TextView)findViewById(R.id.itemFPS);
-        itemFPS.setBackgroundColor(Color.GRAY);
         itemIndicatedSpeed = (TextView)findViewById(R.id.itemIndicatedSpeed);
-        itemIndicatedSpeed.setBackgroundColor(Color.GRAY);
         itemAltitudeMSL = (TextView)findViewById(R.id.itemAltitudeMSL);
-        itemAltitudeMSL.setBackgroundColor(Color.GRAY);
         itemAltitudeGround = (TextView)findViewById(R.id.itemAltitudeGround);
-        itemAltitudeGround.setBackgroundColor(Color.GRAY);
         itemAltitudeGauge = (TextView)findViewById(R.id.itemAltitudeGauge);
-        itemAltitudeGauge.setBackgroundColor(Color.GRAY);
+
+        resetIndicators();
 
         mapDREF = new TreeMap<>();
         mapDATA = new TreeMap<>();
@@ -144,7 +149,6 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
             v.setBackgroundColor(Color.GREEN);
     }
 
-
     public void onReceiveUDP(byte[] buffer) {
         Log.d(Const.TAG, "onReceiveUDP bytes=" + buffer.length);
         sequence++;
@@ -203,7 +207,7 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
                 setItemString(itemAltitudeGauge, "Altitude Gauge", oneDecimal.format(f) + "ft", false);
             }
 
-            updateUI();
+            updateDebugUI();
         } else if ((buffer.length >= 5) && (buffer[0] == 'D') && (buffer[1] == 'A') && (buffer[2] == 'T') && (buffer[3] == 'A') && (buffer[4] == '*')) {
             Log.d(Const.TAG, "Found DATA* packet");
             // A data blob is an int (4 bytes) followed by 8 floats (8*4) = total 36
@@ -226,7 +230,7 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
                 debugArray += "]";
                 Log.d(Const.TAG, "DATA* id=" + id + " array=" + debugArray);
                 mapDATA.put("DATA*" + id, debugArray);
-                updateUI();
+                updateDebugUI();
             }
             if (start != buffer.length)
                 Log.e(Const.TAG, "Mismatch in buffer size, end was " + start + " but buffer length was " + buffer.length);
@@ -235,7 +239,11 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
         }
     }
 
-    public void updateUI() {
+    public void updateDebugUI() {
+        // If debug mode is not visible, do nothing
+        if (debugText.getVisibility() != View.VISIBLE)
+            return;
+
         // Dump out current list of everything
         String out = "sequence=" + sequence + "\n";
         for (TreeMap.Entry<String, Float> entry : mapDREF.entrySet()) {
@@ -248,5 +256,18 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
             out = out + "\n" + entry.getKey() + " = " + entry.getValue();
         }
         debugText.setText(out);
+    }
+
+    public void resetIndicators() {
+        itemSpeedBrake.setBackgroundColor(Color.GRAY);
+        itemParkingBrake.setBackgroundColor(Color.GRAY);
+        itemLeftBrake.setBackgroundColor(Color.GRAY);
+        itemRightBrake.setBackgroundColor(Color.GRAY);
+        itemReverseThrust.setBackgroundColor(Color.GRAY);
+        itemFPS.setBackgroundColor(Color.GRAY);
+        itemIndicatedSpeed.setBackgroundColor(Color.GRAY);
+        itemAltitudeMSL.setBackgroundColor(Color.GRAY);
+        itemAltitudeGround.setBackgroundColor(Color.GRAY);
+        itemAltitudeGauge.setBackgroundColor(Color.GRAY);
     }
 }
