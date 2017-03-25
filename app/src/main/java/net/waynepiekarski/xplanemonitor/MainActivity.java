@@ -1,6 +1,7 @@
 package net.waynepiekarski.xplanemonitor;
 
 import android.app.Activity;
+import android.graphics.Color;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.text.format.Formatter;
@@ -11,6 +12,7 @@ import android.widget.TextView;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.text.DecimalFormat;
 import java.util.TreeMap;
 
 public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
@@ -18,11 +20,13 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
     UDPReceiver data_listener, dref_listener;
     TextView ipAddress;
     TextView debugText;
-    Button resetButton;
-    Button simButton;
+    TextView itemSpeedBrake, itemParkingBrake, itemLeftBrake, itemRightBrake, itemReverseThrust;
+    TextView itemFPS, itemIndicatedSpeed, itemAltitudeMSL, itemAltitudeGround, itemAltitudeGauge;
+    Button exitButton, resetButton, simButton;
     TreeMap<String, Float> mapDREF;
     TreeMap<String, String> mapDATA;
     int sequence;
+    DecimalFormat oneDecimal = new DecimalFormat("#.#");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -31,6 +35,13 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
 
         ipAddress = (TextView)findViewById(R.id.ipAddress);
         debugText = (TextView)findViewById(R.id.debugText);
+        exitButton = (Button)findViewById(R.id.exit);
+        exitButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                Log.d(Const.TAG, "Exiting");
+                android.os.Process.killProcess(android.os.Process.myPid());
+            }
+        });
         resetButton = (Button)findViewById(R.id.reset);
         resetButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -49,6 +60,26 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
             }
         });
 
+        itemSpeedBrake = (TextView)findViewById(R.id.itemSpeedBrake);
+        itemSpeedBrake.setBackgroundColor(Color.GRAY);
+        itemParkingBrake = (TextView)findViewById(R.id.itemParkingBrake);
+        itemParkingBrake.setBackgroundColor(Color.GRAY);
+        itemLeftBrake = (TextView)findViewById(R.id.itemLeftBrake);
+        itemLeftBrake.setBackgroundColor(Color.GRAY);
+        itemRightBrake = (TextView)findViewById(R.id.itemRightBrake);
+        itemRightBrake.setBackgroundColor(Color.GRAY);
+        itemReverseThrust = (TextView)findViewById(R.id.itemReverseThrust);
+        itemReverseThrust.setBackgroundColor(Color.GRAY);
+        itemFPS = (TextView)findViewById(R.id.itemFPS);
+        itemFPS.setBackgroundColor(Color.GRAY);
+        itemIndicatedSpeed = (TextView)findViewById(R.id.itemIndicatedSpeed);
+        itemIndicatedSpeed.setBackgroundColor(Color.GRAY);
+        itemAltitudeMSL = (TextView)findViewById(R.id.itemAltitudeMSL);
+        itemAltitudeMSL.setBackgroundColor(Color.GRAY);
+        itemAltitudeGround = (TextView)findViewById(R.id.itemAltitudeGround);
+        itemAltitudeGround.setBackgroundColor(Color.GRAY);
+        itemAltitudeGauge = (TextView)findViewById(R.id.itemAltitudeGauge);
+        itemAltitudeGauge.setBackgroundColor(Color.GRAY);
 
         mapDREF = new TreeMap<>();
         mapDATA = new TreeMap<>();
@@ -62,7 +93,7 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
         WifiManager wm = (WifiManager) getSystemService(WIFI_SERVICE);
         String ip = Formatter.formatIpAddress(wm.getConnectionInfo().getIpAddress());
         Log.d(Const.TAG, "onResume(), starting listeners with IP address " + ip);
-        ipAddress.setText(ip);
+        ipAddress.setText(ip + ":" + Const.UDP_DREF_PORT + "/" + Const.UDP_DATA_PORT);
 
         dref_listener = new UDPReceiver(Const.UDP_DREF_PORT, null, this);
         data_listener = new UDPReceiver(Const.UDP_DATA_PORT, null, this);
@@ -99,6 +130,21 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
 
     }
 
+    public void setBrakePercent(TextView v, String label, float f) {
+        int percent = (int)(f * 100);
+        boolean red = (percent >= 1);
+        setItemString(v, label, "" + percent + "%", (percent >= 1));
+    }
+
+    public void setItemString(TextView v, String label, String value, boolean red) {
+        v.setText(label + "\n" + value);
+        if (red)
+            v.setBackgroundColor(Color.RED);
+        else
+            v.setBackgroundColor(Color.GREEN);
+    }
+
+
     public void onReceiveUDP(byte[] buffer) {
         Log.d(Const.TAG, "onReceiveUDP bytes=" + buffer.length);
         sequence++;
@@ -117,6 +163,46 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
             Log.d(Const.TAG, "Parsed DREF+ with float=" + f + " for variable=" + name);
 
             mapDREF.put(name, f);
+
+            // Handle reinterpreted values
+            if (name.equals("sim/operation/misc/frame_rate_period[0]")) {
+                if (f < 0.0001) {
+                    mapDREF.put("calc/" + name, -1.0f);
+                    itemFPS.setText("FPS\nn/a");
+                } else {
+                    mapDREF.put("calc/" + name, 1.0f / f);
+                    itemFPS.setText("FPS\n" + oneDecimal.format(1.0f/f));
+                    itemFPS.setBackgroundColor(Color.GREEN);
+                }
+            }
+
+            // Handle indicator views here
+            if (name.equals("sim/cockpit2/controls/left_brake_ratio[0]")) {
+                setBrakePercent(itemLeftBrake, "Left Brake", f);
+            } else if (name.equals("sim/cockpit2/controls/right_brake_ratio[0]")) {
+                setBrakePercent(itemRightBrake, "Right Brake", f);
+            } else if (name.equals("sim/cockpit2/controls/parking_brake_ratio[0]")) {
+                setBrakePercent(itemParkingBrake, "Parking Brake", f);
+            } else if (name.equals("sim/cockpit2/controls/speedbrake_ratio[0]")) {
+                setBrakePercent(itemSpeedBrake, "Speed Brake (Air)", f);
+            } else if (name.equals("sim/cockpit/warnings/annunciators/reverse[0]")) {
+                int bits = (int)f;
+                String engines = "";
+                if ((bits & 1) == 1) engines += "1";
+                if ((bits & 2) == 2) engines += "2";
+                if ((bits & 4) == 4) engines += "3";
+                if ((bits & 8) == 8) engines += "4";
+                setItemString(itemReverseThrust, "Thrust Direction", (bits != 0 ? "REVERSE " + engines : "All Forward"), (bits != 0));
+            } else if (name.equals("sim/flightmodel/position/indicated_airspeed[0]")) {
+                setItemString(itemIndicatedSpeed, "Indicated Air Speed", oneDecimal.format(f) + "kts", false);
+            } else if (name.equals("sim/flightmodel/position/y_agl[0]")) {
+                setItemString(itemAltitudeGround, "Altitude AGL", oneDecimal.format(f * Const.METERS_TO_FEET) + "ft", false);
+            } else if (name.equals("sim/flightmodel/position/elevation[0]")) {
+                setItemString(itemAltitudeMSL, "Altitude MSL", oneDecimal.format(f * Const.METERS_TO_FEET) + "ft", false);
+            } else if (name.equals("sim/cockpit2/gauges/indicators/altitude_ft_pilot[0]")) {
+                setItemString(itemAltitudeGauge, "Altitude Gauge", oneDecimal.format(f) + "ft", false);
+            }
+
             updateUI();
         } else if ((buffer.length >= 5) && (buffer[0] == 'D') && (buffer[1] == 'A') && (buffer[2] == 'T') && (buffer[3] == 'A') && (buffer[4] == '*')) {
             Log.d(Const.TAG, "Found DATA* packet");
