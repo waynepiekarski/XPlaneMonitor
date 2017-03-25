@@ -166,29 +166,29 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
             String name = new String(buffer, +9, zero - 9);
             Log.d(Const.TAG, "Parsed DREF+ with float=" + f + " for variable=" + name);
 
-            mapDREF.put(name, f);
-
-            // Handle reinterpreted values
+            boolean indicator;
+            // Handle any of the indicators
             if (name.equals("sim/operation/misc/frame_rate_period[0]")) {
                 if (f < 0.0001) {
-                    mapDREF.put("calc/" + name, -1.0f);
                     itemFPS.setText("FPS\nn/a");
+                    itemFPS.setBackgroundColor(Color.GRAY);
                 } else {
-                    mapDREF.put("calc/" + name, 1.0f / f);
-                    itemFPS.setText("FPS\n" + oneDecimal.format(1.0f/f));
+                    itemFPS.setText("FPS\n" + oneDecimal.format(1.0f / f));
                     itemFPS.setBackgroundColor(Color.GREEN);
                 }
-            }
-
-            // Handle indicator views here
-            if (name.equals("sim/cockpit2/controls/left_brake_ratio[0]")) {
+                indicator = true;
+            } else if (name.equals("sim/cockpit2/controls/left_brake_ratio[0]")) {
                 setBrakePercent(itemLeftBrake, "Left Brake", f);
+                indicator = true;
             } else if (name.equals("sim/cockpit2/controls/right_brake_ratio[0]")) {
                 setBrakePercent(itemRightBrake, "Right Brake", f);
+                indicator = true;
             } else if (name.equals("sim/cockpit2/controls/parking_brake_ratio[0]")) {
                 setBrakePercent(itemParkingBrake, "Parking Brake", f);
+                indicator = true;
             } else if (name.equals("sim/cockpit2/controls/speedbrake_ratio[0]")) {
                 setBrakePercent(itemSpeedBrake, "Speed Brake (Air)", f);
+                indicator = true;
             } else if (name.equals("sim/cockpit/warnings/annunciators/reverse[0]")) {
                 int bits = (int)f;
                 String engines = "";
@@ -197,14 +197,30 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
                 if ((bits & 4) == 4) engines += "3";
                 if ((bits & 8) == 8) engines += "4";
                 setItemString(itemReverseThrust, "Thrust Direction", (bits != 0 ? "REVERSE " + engines : "All Forward"), (bits != 0));
+                indicator = true;
             } else if (name.equals("sim/flightmodel/position/indicated_airspeed[0]")) {
                 setItemString(itemIndicatedSpeed, "Indicated Air Speed", oneDecimal.format(f) + "kts", false);
+                indicator = true;
             } else if (name.equals("sim/flightmodel/position/y_agl[0]")) {
                 setItemString(itemAltitudeGround, "Altitude AGL", oneDecimal.format(f * Const.METERS_TO_FEET) + "ft", false);
+                indicator = true;
             } else if (name.equals("sim/flightmodel/position/elevation[0]")) {
                 setItemString(itemAltitudeMSL, "Altitude MSL", oneDecimal.format(f * Const.METERS_TO_FEET) + "ft", false);
+                indicator = true;
             } else if (name.equals("sim/cockpit2/gauges/indicators/altitude_ft_pilot[0]")) {
                 setItemString(itemAltitudeGauge, "Altitude Gauge", oneDecimal.format(f) + "ft", false);
+                indicator = true;
+            } else {
+                // We don't need this value, it will only appear in the debug dump
+                indicator = false;
+            }
+
+            if (indicator) {
+                // We requested this item
+                mapDREF.put("Indicate: " + name, f);
+            } else {
+                // We didn't need this item, it will only be visible in the debug dump
+                mapDREF.put("Unused: " + name, f);
             }
 
             updateDebugUI();
