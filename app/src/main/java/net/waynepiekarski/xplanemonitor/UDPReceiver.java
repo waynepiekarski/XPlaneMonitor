@@ -65,9 +65,9 @@ public class UDPReceiver extends AsyncTask<Integer, UDPReceiver.UDPData, Long> {
                 try {
                     socket.receive(packet);
                     packetCount++;
-                    Log.d(Const.TAG, "Received packet with " + packet.getLength() + " bytes of data");
-                    Log.d(Const.TAG, "Hex dump = [" + bytesToHex(packet.getData(), packet.getLength()) + "]");
-                    Log.d(Const.TAG, "Txt dump = [" + bytesToChars(packet.getData(), packet.getLength()) + "]");
+                    // Log.d(Const.TAG, "Received packet with " + packet.getLength() + " bytes of data");
+                    // Log.d(Const.TAG, "Hex dump = [" + bytesToHex(packet.getData(), packet.getLength()) + "]");
+                    // Log.d(Const.TAG, "Txt dump = [" + bytesToChars(packet.getData(), packet.getLength()) + "]");
                     UDPData data = new UDPData(buffer, packet.getLength());
 
                     publishProgress(data);
@@ -90,7 +90,7 @@ public class UDPReceiver extends AsyncTask<Integer, UDPReceiver.UDPData, Long> {
     @Override
     protected void onProgressUpdate(UDPData... progress) {
         assertEquals(1, progress.length);
-        Log.d(Const.TAG, "onProgressUpdate (UI thread)");
+        // Log.d(Const.TAG, "onProgressUpdate (UI thread)");
         // This runs on the UI thread, we can use progress[0] or the packet text if we want
         //if (statusView != null)
             //statusView.setText("Downloaded " + progress[0]); // TODO: Update this value

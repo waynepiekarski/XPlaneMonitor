@@ -157,7 +157,7 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
     }
 
     public void onReceiveUDP(byte[] buffer) {
-        Log.d(Const.TAG, "onReceiveUDP bytes=" + buffer.length);
+        // Log.d(Const.TAG, "onReceiveUDP bytes=" + buffer.length);
         sequence++;
 
         if ((buffer.length >= 5) && (buffer[0] == 'D') && (buffer[1] == 'R') && (buffer[2] == 'E') && (buffer[3] == 'F')) {
@@ -171,7 +171,7 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
             for (zero = 9; zero < buffer.length && buffer[zero] != '\0'; zero++)
                 ;
             String name = new String(buffer, +9, zero - 9);
-            Log.d(Const.TAG, "Parsed DREF+ with float=" + f + " for variable=" + name);
+            // Log.d(Const.TAG, "Parsed DREF+ with float=" + f + " for variable=" + name);
 
             boolean indicator;
             // Handle any of the indicators
@@ -232,7 +232,7 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
 
             updateDebugUI();
         } else if ((buffer.length >= 5) && (buffer[0] == 'D') && (buffer[1] == 'A') && (buffer[2] == 'T') && (buffer[3] == 'A') && (buffer[4] == '*')) {
-            Log.d(Const.TAG, "Found DATA* packet");
+            // Log.d(Const.TAG, "Found DATA* packet");
             // A data blob is an int (4 bytes) followed by 8 floats (8*4) = total 36
             // There can be many blobs in a single UDP packet (5 byte header + n*36 == packet size)
             final int blob_length = 4 + 8*4;
@@ -251,7 +251,7 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
                         debugArray += ", ";
                 }
                 debugArray += "]";
-                Log.d(Const.TAG, "DATA* id=" + id + " array=" + debugArray);
+                // Log.d(Const.TAG, "DATA* id=" + id + " array=" + debugArray);
                 mapDATA.put("DATA*" + id, debugArray);
                 updateDebugUI();
             }
