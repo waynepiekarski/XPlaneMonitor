@@ -1,6 +1,7 @@
 package net.waynepiekarski.xplanemonitor;
 
 import android.app.Activity;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
@@ -27,6 +28,12 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
     TreeMap<String, String> mapDATA;
     int sequence;
     DecimalFormat oneDecimal = new DecimalFormat("#.#");
+
+    @Override
+    public void onConfigurationChanged(Configuration config) {
+        Log.d(Const.TAG, "onConfigurationChanged");
+        super.onConfigurationChanged(config);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
