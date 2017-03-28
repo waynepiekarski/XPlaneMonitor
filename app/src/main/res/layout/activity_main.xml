@@ -7,6 +7,18 @@
     android:orientation="vertical"
     tools:context="net.waynepiekarski.xplanemonitor.MainActivity">
 
+    <TextView
+        android:id="@+id/ipAddress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:ems="10"
+        android:text="WiFi IP Address"
+        android:textAlignment="center"
+        tools:layout_editor_absoluteX="0dp"
+        tools:layout_editor_absoluteY="0dp" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -16,8 +28,6 @@
             android:id="@+id/exit"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_below="@+id/layout2"
-            android:layout_toStartOf="@+id/reset"
             android:layout_weight="1"
             android:text="Exit" />
 
@@ -25,7 +35,6 @@
             android:id="@+id/reset"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_alignParentBottom="true"
             android:layout_centerHorizontal="true"
             android:layout_weight="1"
             android:text="Reset" />
@@ -34,8 +43,6 @@
             android:id="@+id/debug"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_below="@+id/layout2"
-            android:layout_toStartOf="@+id/exit"
             android:layout_weight="1"
             android:text="Debug" />
 
@@ -43,30 +50,15 @@
             android:id="@+id/simulate"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_alignTop="@+id/reset"
-            android:layout_toEndOf="@+id/reset"
             android:layout_weight="1"
             android:text="Simulate" />
 
     </LinearLayout>
 
-    <TextView
-            android:id="@+id/ipAddress"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_alignParentStart="true"
-            android:layout_alignParentTop="true"
-            android:layout_weight="1"
-            android:ems="10"
-            android:text="WiFi IP Address"
-            tools:layout_editor_absoluteX="0dp"
-            tools:layout_editor_absoluteY="0dp" />
-
     <LinearLayout
         android:id="@+id/layout1"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/scrollView"
         android:orientation="horizontal">
 
         <TextView
@@ -115,8 +107,6 @@
         android:id="@+id/layout2"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_above="@+id/reset"
-        android:layout_below="@+id/layout1"
         android:orientation="horizontal">
 
         <TextView
@@ -164,10 +154,7 @@
     <ScrollView
         android:id="@+id/scrollView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_alignParentStart="true"
-        android:layout_below="@+id/ipAddress"
-        android:layout_weight="1">
+        android:layout_height="match_parent">
 
         <TextView
             android:id="@+id/debugText"
