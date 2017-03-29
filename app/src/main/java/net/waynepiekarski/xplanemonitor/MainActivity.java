@@ -124,7 +124,7 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
     protected void onResume() {
         super.onResume();
 
-        WifiManager wm = (WifiManager) getSystemService(WIFI_SERVICE);
+        WifiManager wm = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
         String ip = Formatter.formatIpAddress(wm.getConnectionInfo().getIpAddress());
         Log.d(Const.TAG, "onResume(), starting listeners with IP address " + ip);
         ipAddress.setText(ip + ":" + Const.UDP_DREF_PORT + "/" + Const.UDP_DATA_PORT);
