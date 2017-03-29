@@ -41,6 +41,7 @@ import java.util.TreeMap;
 public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
 
     UDPReceiver data_listener, dref_listener;
+    TextView version;
     TextView ipAddress;
     TextView debugText;
     TextView itemSpeedBrake, itemParkingBrake, itemLeftBrake, itemRightBrake, itemReverseThrust;
@@ -62,6 +63,8 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        version = (TextView)findViewById(R.id.version);
+        version.setText("v" + BuildConfig.VERSION_NAME + " " + BuildConfig.VERSION_CODE + " " + BuildConfig.BUILD_TYPE);
         ipAddress = (TextView)findViewById(R.id.ipAddress);
         debugText = (TextView)findViewById(R.id.debugText);
         exitButton = (Button)findViewById(R.id.exit);
@@ -90,6 +93,7 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
             }
         });
         debugButton = (Button)findViewById(R.id.debug);
+        debugText.setVisibility(View.INVISIBLE); // Disable debugging by default
         debugButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 Log.d(Const.TAG, "Toggle debug mode");
