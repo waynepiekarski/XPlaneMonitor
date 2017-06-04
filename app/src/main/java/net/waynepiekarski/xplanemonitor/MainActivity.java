@@ -46,11 +46,19 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
     TextView debugText;
     TextView itemSpeedBrake, itemParkingBrake, itemLeftBrake, itemRightBrake, itemReverseThrust;
     TextView itemFPS, itemIndicatedSpeed, itemAltitudeMSL, itemAltitudeGround, itemAltitudeGauge;
+    TextView itemForceGear, itemForceVertical;
+    TextView itemFlapsDesired, itemFlapsActual;
+    TextView itemDME1Distance, itemDME2Distance;
+    BarView  barForceVertical;
+    GraphView graphForceVertical;
     Button exitButton, resetButton, simButton, debugButton;
     TreeMap<String, Float> mapDREF;
     TreeMap<String, String> mapDATA;
     int sequence;
     DecimalFormat oneDecimal = new DecimalFormat("#.#");
+    DecimalFormat zeroDecimal = new DecimalFormat("#");
+    String lastFlapsDesired = "";
+    String lastFlapsActual = "";
 
     @Override
     public void onConfigurationChanged(Configuration config) {
@@ -116,6 +124,16 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
         itemAltitudeMSL = (TextView)findViewById(R.id.itemAltitudeMSL);
         itemAltitudeGround = (TextView)findViewById(R.id.itemAltitudeGround);
         itemAltitudeGauge = (TextView)findViewById(R.id.itemAltitudeGauge);
+        itemFlapsActual = (TextView)findViewById(R.id.itemFlapsActual);
+        itemFlapsDesired = (TextView)findViewById(R.id.itemFlapsDesired);
+        itemForceVertical = (TextView)findViewById(R.id.itemForceVertical);
+        itemForceGear = (TextView)findViewById(R.id.itemForceGear);
+        itemDME1Distance = (TextView)findViewById(R.id.itemDME1Distance);
+        itemDME2Distance = (TextView)findViewById(R.id.itemDME2Distance);
+        barForceVertical = (BarView)findViewById(R.id.barForceVertical);
+        graphForceVertical = (GraphView)findViewById(R.id.graphForceVertical);
+        barForceVertical.setMaximum(3.0); // +/- 3G maximum
+        graphForceVertical.setSize(1); // Only 1 value on the graph
 
         resetIndicators();
 
@@ -243,6 +261,28 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
             } else if (name.equals("sim/cockpit2/gauges/indicators/altitude_ft_pilot[0]")) {
                 setItemString(itemAltitudeGauge, "Altitude Gauge", oneDecimal.format(f) + "ft", false);
                 indicator = true;
+            } else if (name.equals("sim/cockpit2/controls/flap_handle_deploy_ratio[0]")) {
+                lastFlapsActual = zeroDecimal.format(40 * f);
+                setItemString(itemFlapsActual, "Flaps Actual", lastFlapsActual, !lastFlapsActual.equals(lastFlapsDesired));
+                indicator = true;
+            } else if (name.equals("sim/flightmodel/controls/flaprqst[0]")) {
+                lastFlapsDesired = zeroDecimal.format(40 * f);
+                setItemString(itemFlapsDesired, "Flaps Desired", lastFlapsDesired, f > 0.01);
+                indicator = true;
+            } else if (name.equals("sim/flightmodel2/gear/tire_vertical_force_n_mtr[0]")) {
+                setItemString(itemForceGear, "Gear Force", oneDecimal.format(f) + "Nm", false);
+                indicator = true;
+            } else if (name.equals("sim/flightmodel/forces/g_nrml[0]")) {
+                setItemString(itemForceVertical, "Vert Force", oneDecimal.format(f / 9.8) + "G", false);
+                graphForceVertical.set1Value(f / 9.8);
+                barForceVertical.setValue(f / 9.8);
+                indicator = true;
+            } else if (name.equals("sim/cockpit/radios/nav1_dme_dist_m[0]")) {
+                setItemString(itemDME1Distance, "NAV1 DME", oneDecimal.format(f) + "Nm", false);
+                indicator = true;
+            } else if (name.equals("sim/cockpit/radios/nav2_dme_dist_m[0]")) {
+                setItemString(itemDME2Distance, "NAV2 DME", oneDecimal.format(f) + "Nm", false);
+                indicator = true;
             } else {
                 // We don't need this value, it will only appear in the debug dump
                 indicator = false;
@@ -318,5 +358,13 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
         itemAltitudeMSL.setBackgroundColor(Color.GRAY);
         itemAltitudeGround.setBackgroundColor(Color.GRAY);
         itemAltitudeGauge.setBackgroundColor(Color.GRAY);
+        itemForceGear.setBackgroundColor(Color.GRAY);
+        itemForceVertical.setBackgroundColor(Color.GRAY);
+        itemFlapsDesired.setBackgroundColor(Color.GRAY);;
+        itemFlapsActual.setBackgroundColor(Color.GRAY);
+        itemDME1Distance.setBackgroundColor(Color.GRAY);
+        itemDME2Distance.setBackgroundColor(Color.GRAY);
+        barForceVertical.reset();
+        graphForceVertical.reset();
     }
 }

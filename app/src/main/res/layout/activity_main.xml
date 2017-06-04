@@ -167,6 +167,72 @@
 
     </LinearLayout>
 
+    <LinearLayout
+        android:id="@+id/layout3"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/itemFlapsDesired"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="flaprqst"
+            android:textAlignment="center" />
+
+        <TextView
+            android:id="@+id/itemFlapsActual"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="flap_handle_deploy_ratio"
+            android:textAlignment="center" />
+
+        <TextView
+            android:id="@+id/itemForceVertical"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="g_nrml"
+            android:textAlignment="center" />
+
+        <TextView
+            android:id="@+id/itemForceGear"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="tire_vertical_force_n_mtr"
+            android:textAlignment="center" />
+
+        <TextView
+            android:id="@+id/itemDME1Distance"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="nav1_dme_dist_m"
+            android:textAlignment="center" />
+
+        <TextView
+            android:id="@+id/itemDME2Distance"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="nav2_dme_dist_m"
+            android:textAlignment="center" />
+
+    </LinearLayout>
+
+    <net.waynepiekarski.xplanemonitor.BarView
+        android:id="@+id/barForceVertical"
+        android:layout_width="match_parent"
+        android:layout_height="50px" />
+
+    <net.waynepiekarski.xplanemonitor.GraphView
+        android:id="@+id/graphForceVertical"
+        android:layout_width="match_parent"
+        android:layout_height="200px" />
+
     <ScrollView
         android:id="@+id/scrollView"
         android:layout_width="match_parent"
