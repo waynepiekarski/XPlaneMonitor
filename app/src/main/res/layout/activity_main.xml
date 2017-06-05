@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+<LinearLayout
     android:id="@+id/activity_main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -41,14 +42,14 @@
         android:orientation="horizontal">
 
         <Button
-            android:id="@+id/exit"
+            android:id="@+id/exitButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Exit" />
 
         <Button
-            android:id="@+id/reset"
+            android:id="@+id/resetButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerHorizontal="true"
@@ -56,14 +57,14 @@
             android:text="Reset" />
 
         <Button
-            android:id="@+id/debug"
+            android:id="@+id/debugButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Debug" />
 
         <Button
-            android:id="@+id/simulate"
+            android:id="@+id/simulateButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -249,3 +250,4 @@
     </ScrollView>
 
 </LinearLayout>
+</layout>

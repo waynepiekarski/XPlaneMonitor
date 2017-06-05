@@ -17,6 +17,7 @@ android {
             shrinkResources true
         }
     }
+    dataBinding.enabled = true
 }
 
 dependencies {

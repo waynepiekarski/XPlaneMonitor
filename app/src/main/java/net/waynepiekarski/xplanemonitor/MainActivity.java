@@ -24,15 +24,20 @@ package net.waynepiekarski.xplanemonitor;
 
 import android.app.Activity;
 import android.content.res.Configuration;
+import android.databinding.DataBindingUtil;
 import android.graphics.Color;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.text.format.Formatter;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 
+import net.waynepiekarski.xplanemonitor.databinding.ActivityMainBinding;
+
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.text.DecimalFormat;
@@ -41,17 +46,6 @@ import java.util.TreeMap;
 public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
 
     UDPReceiver data_listener, dref_listener;
-    TextView version;
-    TextView ipAddress;
-    TextView debugText;
-    TextView itemSpeedBrake, itemParkingBrake, itemLeftBrake, itemRightBrake, itemReverseThrust;
-    TextView itemFPS, itemIndicatedSpeed, itemAltitudeMSL, itemAltitudeGround, itemAltitudeGauge;
-    TextView itemForceGear, itemForceVertical;
-    TextView itemFlapsDesired, itemFlapsActual;
-    TextView itemDME1Distance, itemDME2Distance;
-    BarView  barForceVertical;
-    GraphView graphForceVertical;
-    Button exitButton, resetButton, simButton, debugButton;
     TreeMap<String, Float> mapDREF;
     TreeMap<String, String> mapDATA;
     int sequence;
@@ -59,6 +53,7 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
     DecimalFormat zeroDecimal = new DecimalFormat("#");
     String lastFlapsDesired = "";
     String lastFlapsActual = "";
+    ActivityMainBinding binding;
 
     @Override
     public void onConfigurationChanged(Configuration config) {
@@ -69,21 +64,16 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_main);
 
-        version = (TextView)findViewById(R.id.version);
-        version.setText("v" + BuildConfig.VERSION_NAME + " " + BuildConfig.VERSION_CODE + " " + BuildConfig.BUILD_TYPE);
-        ipAddress = (TextView)findViewById(R.id.ipAddress);
-        debugText = (TextView)findViewById(R.id.debugText);
-        exitButton = (Button)findViewById(R.id.exit);
-        exitButton.setOnClickListener(new View.OnClickListener() {
+        binding.version.setText("v" + BuildConfig.VERSION_NAME + " " + BuildConfig.VERSION_CODE + " " + BuildConfig.BUILD_TYPE);
+        binding.exitButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 Log.d(Const.TAG, "Exiting");
                 android.os.Process.killProcess(android.os.Process.myPid());
             }
         });
-        resetButton = (Button)findViewById(R.id.reset);
-        resetButton.setOnClickListener(new View.OnClickListener() {
+        binding.resetButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 Log.d(Const.TAG, "Resetting internal map");
                 mapDREF.clear();
@@ -92,48 +82,28 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
                 resetIndicators();
             }
         });
-        simButton = (Button)findViewById(R.id.simulate);
-        simButton.setOnClickListener(new View.OnClickListener() {
+        binding.simulateButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 Log.d(Const.TAG, "Simulating some data");
                 onReceiveUDP(sample_groundspeed);
                 onReceiveUDP(sample_data);
             }
         });
-        debugButton = (Button)findViewById(R.id.debug);
-        debugText.setVisibility(View.INVISIBLE); // Disable debugging by default
-        debugButton.setOnClickListener(new View.OnClickListener() {
+        binding.debugText.setVisibility(View.INVISIBLE); // Disable debugging by default
+        binding.debugButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 Log.d(Const.TAG, "Toggle debug mode");
-                if (debugText.getVisibility() == View.VISIBLE) {
-                    debugText.setVisibility(View.INVISIBLE);
+                if (binding.debugText.getVisibility() == View.VISIBLE) {
+                    binding.debugText.setVisibility(View.INVISIBLE);
                 } else {
-                    debugText.setVisibility(View.VISIBLE);
+                    binding.debugText.setVisibility(View.VISIBLE);
                     updateDebugUI();
                 }
             }
         });
 
-        itemSpeedBrake = (TextView)findViewById(R.id.itemSpeedBrake);
-        itemParkingBrake = (TextView)findViewById(R.id.itemParkingBrake);
-        itemLeftBrake = (TextView)findViewById(R.id.itemLeftBrake);
-        itemRightBrake = (TextView)findViewById(R.id.itemRightBrake);
-        itemReverseThrust = (TextView)findViewById(R.id.itemReverseThrust);
-        itemFPS = (TextView)findViewById(R.id.itemFPS);
-        itemIndicatedSpeed = (TextView)findViewById(R.id.itemIndicatedSpeed);
-        itemAltitudeMSL = (TextView)findViewById(R.id.itemAltitudeMSL);
-        itemAltitudeGround = (TextView)findViewById(R.id.itemAltitudeGround);
-        itemAltitudeGauge = (TextView)findViewById(R.id.itemAltitudeGauge);
-        itemFlapsActual = (TextView)findViewById(R.id.itemFlapsActual);
-        itemFlapsDesired = (TextView)findViewById(R.id.itemFlapsDesired);
-        itemForceVertical = (TextView)findViewById(R.id.itemForceVertical);
-        itemForceGear = (TextView)findViewById(R.id.itemForceGear);
-        itemDME1Distance = (TextView)findViewById(R.id.itemDME1Distance);
-        itemDME2Distance = (TextView)findViewById(R.id.itemDME2Distance);
-        barForceVertical = (BarView)findViewById(R.id.barForceVertical);
-        graphForceVertical = (GraphView)findViewById(R.id.graphForceVertical);
-        barForceVertical.setMaximum(3.0); // +/- 3G maximum
-        graphForceVertical.setSize(1); // Only 1 value on the graph
+        binding.barForceVertical.setMaximum(3.0); // +/- 3G maximum
+        binding.graphForceVertical.setSize(1); // Only 1 value on the graph
 
         resetIndicators();
 
@@ -149,7 +119,7 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
         WifiManager wm = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
         String ip = Formatter.formatIpAddress(wm.getConnectionInfo().getIpAddress());
         Log.d(Const.TAG, "onResume(), starting listeners with IP address " + ip);
-        ipAddress.setText(ip + ":" + Const.UDP_DREF_PORT + "/" + Const.UDP_DATA_PORT);
+        binding.ipAddress.setText(ip + ":" + Const.UDP_DREF_PORT + "/" + Const.UDP_DATA_PORT);
 
         dref_listener = new UDPReceiver(Const.UDP_DREF_PORT, null, this);
         data_listener = new UDPReceiver(Const.UDP_DATA_PORT, null, this);
@@ -221,24 +191,24 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
             // Handle any of the indicators
             if (name.equals("sim/operation/misc/frame_rate_period[0]")) {
                 if (f < 0.0001) {
-                    itemFPS.setText("FPS\nn/a");
-                    itemFPS.setBackgroundColor(Color.GRAY);
+                    binding.itemFPS.setText("FPS\nn/a");
+                    binding.itemFPS.setBackgroundColor(Color.GRAY);
                 } else {
-                    itemFPS.setText("FPS\n" + oneDecimal.format(1.0f / f));
-                    itemFPS.setBackgroundColor(Color.GREEN);
+                    binding.itemFPS.setText("FPS\n" + oneDecimal.format(1.0f / f));
+                    binding.itemFPS.setBackgroundColor(Color.GREEN);
                 }
                 indicator = true;
             } else if (name.equals("sim/cockpit2/controls/left_brake_ratio[0]")) {
-                setBrakePercent(itemLeftBrake, "Left Brake", f);
+                setBrakePercent(binding.itemLeftBrake, "Left Brake", f);
                 indicator = true;
             } else if (name.equals("sim/cockpit2/controls/right_brake_ratio[0]")) {
-                setBrakePercent(itemRightBrake, "Right Brake", f);
+                setBrakePercent(binding.itemRightBrake, "Right Brake", f);
                 indicator = true;
             } else if (name.equals("sim/cockpit2/controls/parking_brake_ratio[0]")) {
-                setBrakePercent(itemParkingBrake, "Parking Brake", f);
+                setBrakePercent(binding.itemParkingBrake, "Parking Brake", f);
                 indicator = true;
             } else if (name.equals("sim/cockpit2/controls/speedbrake_ratio[0]")) {
-                setBrakePercent(itemSpeedBrake, "Speed Brake (Air)", f);
+                setBrakePercent(binding.itemSpeedBrake, "Speed Brake (Air)", f);
                 indicator = true;
             } else if (name.equals("sim/cockpit/warnings/annunciators/reverse[0]")) {
                 int bits = (int)f;
@@ -247,41 +217,41 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
                 if ((bits & 2) == 2) engines += "2";
                 if ((bits & 4) == 4) engines += "3";
                 if ((bits & 8) == 8) engines += "4";
-                setItemString(itemReverseThrust, "Thrust Direction", (bits != 0 ? "REVERSE " + engines : "All Forward"), (bits != 0));
+                setItemString(binding.itemReverseThrust, "Thrust Direction", (bits != 0 ? "REVERSE " + engines : "All Forward"), (bits != 0));
                 indicator = true;
             } else if (name.equals("sim/flightmodel/position/indicated_airspeed[0]")) {
-                setItemString(itemIndicatedSpeed, "Indicated Air Speed", oneDecimal.format(f) + "kts", false);
+                setItemString(binding.itemIndicatedSpeed, "Indicated Air Speed", oneDecimal.format(f) + "kts", false);
                 indicator = true;
             } else if (name.equals("sim/flightmodel/position/y_agl[0]")) {
-                setItemString(itemAltitudeGround, "Altitude AGL", oneDecimal.format(f * Const.METERS_TO_FEET) + "ft", false);
+                setItemString(binding.itemAltitudeGround, "Altitude AGL", oneDecimal.format(f * Const.METERS_TO_FEET) + "ft", false);
                 indicator = true;
             } else if (name.equals("sim/flightmodel/position/elevation[0]")) {
-                setItemString(itemAltitudeMSL, "Altitude MSL", oneDecimal.format(f * Const.METERS_TO_FEET) + "ft", false);
+                setItemString(binding.itemAltitudeMSL, "Altitude MSL", oneDecimal.format(f * Const.METERS_TO_FEET) + "ft", false);
                 indicator = true;
             } else if (name.equals("sim/cockpit2/gauges/indicators/altitude_ft_pilot[0]")) {
-                setItemString(itemAltitudeGauge, "Altitude Gauge", oneDecimal.format(f) + "ft", false);
+                setItemString(binding.itemAltitudeGauge, "Altitude Gauge", oneDecimal.format(f) + "ft", false);
                 indicator = true;
             } else if (name.equals("sim/cockpit2/controls/flap_handle_deploy_ratio[0]")) {
                 lastFlapsActual = zeroDecimal.format(40 * f);
-                setItemString(itemFlapsActual, "Flaps Actual", lastFlapsActual, !lastFlapsActual.equals(lastFlapsDesired));
+                setItemString(binding.itemFlapsActual, "Flaps Actual", lastFlapsActual, !lastFlapsActual.equals(lastFlapsDesired));
                 indicator = true;
             } else if (name.equals("sim/flightmodel/controls/flaprqst[0]")) {
                 lastFlapsDesired = zeroDecimal.format(40 * f);
-                setItemString(itemFlapsDesired, "Flaps Desired", lastFlapsDesired, f > 0.01);
+                setItemString(binding.itemFlapsDesired, "Flaps Desired", lastFlapsDesired, f > 0.01);
                 indicator = true;
             } else if (name.equals("sim/flightmodel2/gear/tire_vertical_force_n_mtr[0]")) {
-                setItemString(itemForceGear, "Gear Force", oneDecimal.format(f) + "Nm", false);
+                setItemString(binding.itemForceGear, "Gear Force", oneDecimal.format(f) + "Nm", false);
                 indicator = true;
             } else if (name.equals("sim/flightmodel/forces/g_nrml[0]")) {
-                setItemString(itemForceVertical, "Vert Force", oneDecimal.format(f / 9.8) + "G", false);
-                graphForceVertical.set1Value(f / 9.8);
-                barForceVertical.setValue(f / 9.8);
+                setItemString(binding.itemForceVertical, "Vert Force", oneDecimal.format(f / 9.8) + "G", false);
+                binding.graphForceVertical.set1Value(f / 9.8);
+                binding.barForceVertical.setValue(f / 9.8);
                 indicator = true;
             } else if (name.equals("sim/cockpit/radios/nav1_dme_dist_m[0]")) {
-                setItemString(itemDME1Distance, "NAV1 DME", oneDecimal.format(f) + "Nm", false);
+                setItemString(binding.itemDME1Distance, "NAV1 DME", oneDecimal.format(f) + "Nm", false);
                 indicator = true;
             } else if (name.equals("sim/cockpit/radios/nav2_dme_dist_m[0]")) {
-                setItemString(itemDME2Distance, "NAV2 DME", oneDecimal.format(f) + "Nm", false);
+                setItemString(binding.itemDME2Distance, "NAV2 DME", oneDecimal.format(f) + "Nm", false);
                 indicator = true;
             } else {
                 // We don't need this value, it will only appear in the debug dump
@@ -330,7 +300,7 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
 
     public void updateDebugUI() {
         // If debug mode is not visible, do nothing
-        if (debugText.getVisibility() != View.VISIBLE)
+        if (binding.debugText.getVisibility() != View.VISIBLE)
             return;
 
         // Dump out current list of everything
@@ -344,27 +314,30 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
             // Log.d(Const.TAG, "Key=" + entry.getKey() + " Value=" + entry.getValue());
             out = out + "\n" + entry.getKey() + " = " + entry.getValue();
         }
-        debugText.setText(out);
+        binding.debugText.setText(out);
     }
 
     public void resetIndicators() {
-        itemSpeedBrake.setBackgroundColor(Color.GRAY);
-        itemParkingBrake.setBackgroundColor(Color.GRAY);
-        itemLeftBrake.setBackgroundColor(Color.GRAY);
-        itemRightBrake.setBackgroundColor(Color.GRAY);
-        itemReverseThrust.setBackgroundColor(Color.GRAY);
-        itemFPS.setBackgroundColor(Color.GRAY);
-        itemIndicatedSpeed.setBackgroundColor(Color.GRAY);
-        itemAltitudeMSL.setBackgroundColor(Color.GRAY);
-        itemAltitudeGround.setBackgroundColor(Color.GRAY);
-        itemAltitudeGauge.setBackgroundColor(Color.GRAY);
-        itemForceGear.setBackgroundColor(Color.GRAY);
-        itemForceVertical.setBackgroundColor(Color.GRAY);
-        itemFlapsDesired.setBackgroundColor(Color.GRAY);;
-        itemFlapsActual.setBackgroundColor(Color.GRAY);
-        itemDME1Distance.setBackgroundColor(Color.GRAY);
-        itemDME2Distance.setBackgroundColor(Color.GRAY);
-        barForceVertical.reset();
-        graphForceVertical.reset();
+        try {
+            // Set every View starting with "item" to a default gray color
+            Class c = Class.forName(getPackageName() + ".R$id");
+            Field[] fields = c.getFields();
+            for (int i = 0; i < fields.length; i++) {
+                if (fields[i].getName().startsWith("item")) {
+                    int res = fields[i].getInt(null);
+                    View v = findViewById(res);
+                    v.setBackgroundColor(Color.GRAY);
+                }
+            }
+        } catch (ClassNotFoundException e) {
+            Log.e(Const.TAG, "Could not locate R.id class");
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            Log.e(Const.TAG, "Could not access R.id class");
+            e.printStackTrace();
+        }
+
+        binding.barForceVertical.reset();
+        binding.graphForceVertical.reset();
     }
 }
