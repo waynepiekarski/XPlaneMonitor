@@ -102,9 +102,6 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
             }
         });
 
-        binding.barForceVertical.setMaximum(3.0); // +/- 3G maximum
-        binding.graphForceVertical.setSize(1); // Only 1 value on the graph
-
         resetIndicators();
 
         mapDREF = new TreeMap<>();
@@ -243,9 +240,9 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
                 setItemString(binding.itemForceGear, "Gear Force", oneDecimal.format(f) + "Nm", false);
                 indicator = true;
             } else if (name.equals("sim/flightmodel/forces/g_nrml[0]")) {
-                setItemString(binding.itemForceVertical, "Vert Force", oneDecimal.format(f / 9.8) + "G", false);
-                binding.graphForceVertical.set1Value(f / 9.8);
-                binding.barForceVertical.setValue(f / 9.8);
+                setItemString(binding.itemForceVertical, "Vert Force", oneDecimal.format(f) + "G", false);
+                binding.graphForceVertical.set1Value(f);
+                binding.barForceVertical.setValue(f);
                 indicator = true;
             } else if (name.equals("sim/cockpit/radios/nav1_dme_dist_m[0]")) {
                 setItemString(binding.itemDME1Distance, "NAV1 DME", oneDecimal.format(f) + "Nm", false);
@@ -339,5 +336,9 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
 
         binding.barForceVertical.reset();
         binding.graphForceVertical.reset();
+
+        binding.barForceVertical.setMaximum(3.5); // +/- 3G maximum
+        binding.graphForceVertical.resetMaximum(3.5); // +/- 3G maximum
+        binding.graphForceVertical.setSize(1); // Only 1 value on the graph
     }
 }
