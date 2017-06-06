@@ -37,6 +37,8 @@ import android.widget.TextView;
 
 import net.waynepiekarski.xplanemonitor.databinding.ActivityMainBinding;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -87,6 +89,22 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
                 Log.d(Const.TAG, "Simulating some data");
                 onReceiveUDP(sample_groundspeed);
                 onReceiveUDP(sample_data);
+
+                Log.d(Const.TAG, "Processing res/raw/xplane_dump.raw file");
+                InputStream stream = getResources().openRawResource(R.raw.xplane_dump);
+                byte packet[] = new byte[510];
+                int len;
+                int count = 0;
+                try {
+                    while ((len = stream.read(packet)) == packet.length) {
+                        onReceiveUDP(packet);
+                        count++;
+                    }
+                    Log.d(Const.TAG, "Finished processing rew/raw/xplane_dump.raw with " + count + " packets");
+                    stream.close();
+                } catch (IOException e) {
+                    Log.e(Const.TAG, "Could not read from xplane_dump.raw " + e);
+                }
             }
         });
         binding.debugText.setVisibility(View.INVISIBLE); // Disable debugging by default
