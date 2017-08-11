@@ -35,6 +35,17 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 
+import com.google.android.gms.common.GooglePlayServicesNotAvailableException;
+import com.google.android.gms.maps.CameraUpdate;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapView;
+import com.google.android.gms.maps.MapsInitializer;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
+
 import net.waynepiekarski.xplanemonitor.databinding.ActivityMainBinding;
 
 import java.io.IOException;
@@ -56,6 +67,11 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
     String lastFlapsDesired = "";
     String lastFlapsActual = "";
     ActivityMainBinding binding;
+    GoogleMap googleMap;
+    Marker googleMapMarker;
+
+    float globalLatitude = 0.0f;
+    float globalLongitude = 0.0f;
 
     @Override
     public void onConfigurationChanged(Configuration config) {
@@ -105,18 +121,41 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
                 } catch (IOException e) {
                     Log.e(Const.TAG, "Could not read from xplane_dump.raw " + e);
                 }
+
+                globalLatitude += 1;
+                globalLongitude += 1;
+                Log.d(Const.TAG, "Moving latitude and longitude to " + globalLatitude + " " + globalLongitude);
+                setItemMap(globalLatitude, globalLongitude);
             }
         });
-        binding.debugText.setVisibility(View.INVISIBLE); // Disable debugging by default
-        binding.debugButton.setOnClickListener(new View.OnClickListener() {
+
+        binding.switchMainButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                Log.d(Const.TAG, "Toggle debug mode");
-                if (binding.debugText.getVisibility() == View.VISIBLE) {
-                    binding.debugText.setVisibility(View.INVISIBLE);
-                } else {
-                    binding.debugText.setVisibility(View.VISIBLE);
-                    updateDebugUI();
-                }
+                Log.d(Const.TAG, "Enabling main tab");
+                binding.layoutMain.setVisibility(View.VISIBLE);
+                binding.layoutDebug.setVisibility(View.GONE);
+                binding.layoutMap.setVisibility(View.GONE);
+                updateDebugUI();
+            }
+        });
+
+        binding.switchDebugButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                Log.d(Const.TAG, "Enabling debug tab");
+                binding.layoutMain.setVisibility(View.GONE);
+                binding.layoutDebug.setVisibility(View.VISIBLE);
+                binding.layoutMap.setVisibility(View.GONE);
+                updateDebugUI();
+            }
+        });
+
+        binding.switchMapButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                Log.d(Const.TAG, "Enabling map tab");
+                binding.layoutMain.setVisibility(View.GONE);
+                binding.layoutDebug.setVisibility(View.GONE);
+                binding.layoutMap.setVisibility(View.VISIBLE);
+                updateDebugUI();
             }
         });
 
@@ -125,11 +164,24 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
         mapDREF = new TreeMap<>();
         mapDATA = new TreeMap<>();
         sequence = 0;
+
+        // Based on https://stackoverflow.com/questions/16536414/how-to-use-mapview-in-android-using-google-map-v2
+        binding.mapView.onCreate(savedInstanceState);
+        // Do an async call which replaces deprecated getMap(): https://stackoverflow.com/questions/31371865/replace-getmap-with-getmapasync
+        binding.mapView.getMapAsync(new OnMapReadyCallback() {
+            @Override
+            public void onMapReady (GoogleMap map){
+                googleMap = map;
+                LatLng pos = new LatLng(0, 0); // Move the map to a default origin
+                googleMap.moveCamera(CameraUpdateFactory.newLatLng(pos));
+            }
+        });
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        binding.mapView.onResume();
 
         WifiManager wm = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
         String ip = Formatter.formatIpAddress(wm.getConnectionInfo().getIpAddress());
@@ -145,6 +197,7 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
         Log.d(Const.TAG, "onPause(), cancelling UDP listeners");
         dref_listener.cancel(true);
         data_listener.cancel(true);
+        binding.mapView.onPause();
         super.onPause();
     }
 
@@ -183,6 +236,21 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
             v.setBackgroundColor(Color.RED);
         else
             v.setBackgroundColor(Color.GREEN);
+    }
+
+    public void setItemMap(float latitude, float longitude) {
+        binding.mapCoordinates.setText("LatLong: "
+                + (latitude<0 ? "S" : "N")
+                + latitude
+                + " "
+                + (longitude<0 ? "W" : "E")
+                + longitude);
+
+        LatLng pos = new LatLng(latitude, longitude);
+        googleMap.moveCamera(CameraUpdateFactory.newLatLng(pos));
+        if (googleMapMarker != null)
+            googleMapMarker.remove();
+        googleMapMarker = googleMap.addMarker(new MarkerOptions().position(pos).title("Airplane"));
     }
 
     public void onReceiveUDP(byte[] buffer) {
@@ -268,6 +336,14 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
             } else if (name.equals("sim/cockpit/radios/nav2_dme_dist_m[0]")) {
                 setItemString(binding.itemDME2Distance, "NAV2 DME", oneDecimal.format(f) + "Nm", false);
                 indicator = true;
+            } else if (name.equals("sim/flightmodel/position/latitude")) {
+                indicator = true;
+                globalLatitude = f;
+                setItemMap(globalLatitude, globalLongitude);
+            } else if (name.equals("sim/flightmodel/position/longitude")) {
+                indicator = true;
+                globalLongitude = f;
+                setItemMap(globalLatitude, globalLongitude);
             } else {
                 // We don't need this value, it will only appear in the debug dump
                 indicator = false;
@@ -315,7 +391,7 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
 
     public void updateDebugUI() {
         // If debug mode is not visible, do nothing
-        if (binding.debugText.getVisibility() != View.VISIBLE)
+        if (binding.layoutDebug.getVisibility() != View.VISIBLE)
             return;
 
         // Dump out current list of everything
@@ -358,5 +434,8 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
         binding.barForceVertical.setMaximum(3.5); // +/- 3G maximum
         binding.graphForceVertical.resetMaximum(3.5); // +/- 3G maximum
         binding.graphForceVertical.setSize(1); // Only 1 value on the graph
+
+        if (googleMapMarker != null)
+            googleMapMarker.remove();
     }
 }

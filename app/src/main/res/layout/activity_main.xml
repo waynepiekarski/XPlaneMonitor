@@ -42,212 +42,271 @@
         android:orientation="horizontal">
 
         <Button
-            android:id="@+id/exitButton"
+            android:id="@+id/switchMainButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Exit" />
+            android:text="Main" />
 
         <Button
-            android:id="@+id/resetButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_centerHorizontal="true"
-            android:layout_weight="1"
-            android:text="Reset" />
-
-        <Button
-            android:id="@+id/debugButton"
+            android:id="@+id/switchDebugButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Debug" />
 
         <Button
-            android:id="@+id/simulateButton"
+            android:id="@+id/switchMapButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Simulate" />
+            android:text="Map" />
 
     </LinearLayout>
 
     <LinearLayout
-        android:id="@+id/layout1"
+        android:id="@+id/layoutMain"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/itemSpeedBrake"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="speedbrake_ratio"
-            android:textAlignment="center" />
-
-        <TextView
-            android:id="@+id/itemParkingBrake"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="parking_brake_ratio"
-            android:textAlignment="center" />
-
-        <TextView
-            android:id="@+id/itemLeftBrake"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="left_brake_ratio"
-            android:textAlignment="center" />
-
-        <TextView
-            android:id="@+id/itemRightBrake"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="right_brake_ratio"
-            android:textAlignment="center" />
-
-        <TextView
-            android:id="@+id/itemReverseThrust"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="reverse"
-            android:textAlignment="center" />
-
-    </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/layout2"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal">
-
-        <TextView
-            android:id="@+id/itemFPS"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="frame_rate_period"
-            android:textAlignment="center" />
-
-        <TextView
-            android:id="@+id/itemIndicatedSpeed"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="indicated_airspeed"
-            android:textAlignment="center" />
-
-        <TextView
-            android:id="@+id/itemAltitudeMSL"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="elevation"
-            android:textAlignment="center" />
-
-        <TextView
-            android:id="@+id/itemAltitudeGround"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="y_agl"
-            android:textAlignment="center" />
-
-        <TextView
-            android:id="@+id/itemAltitudeGauge"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="altitude_ft_pilot"
-            android:textAlignment="center" />
-
-    </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/layout3"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal">
-
-        <TextView
-            android:id="@+id/itemFlapsDesired"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="flaprqst"
-            android:textAlignment="center" />
-
-        <TextView
-            android:id="@+id/itemFlapsActual"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="flap_handle_deploy_ratio"
-            android:textAlignment="center" />
-
-        <TextView
-            android:id="@+id/itemForceVertical"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="g_nrml"
-            android:textAlignment="center" />
-
-        <TextView
-            android:id="@+id/itemForceGear"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="tire_vertical_force_n_mtr"
-            android:textAlignment="center" />
-
-        <TextView
-            android:id="@+id/itemDME1Distance"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="nav1_dme_dist_m"
-            android:textAlignment="center" />
-
-        <TextView
-            android:id="@+id/itemDME2Distance"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="nav2_dme_dist_m"
-            android:textAlignment="center" />
-
-    </LinearLayout>
-
-    <net.waynepiekarski.xplanemonitor.BarView
-        android:id="@+id/barForceVertical"
-        android:layout_width="match_parent"
-        android:layout_height="50px" />
-
-    <net.waynepiekarski.xplanemonitor.GraphView
-        android:id="@+id/graphForceVertical"
-        android:layout_width="match_parent"
-        android:layout_height="200px" />
-
-    <ScrollView
-        android:id="@+id/scrollView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent">
-
-        <TextView
-            android:id="@+id/debugText"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:ems="10"
-            android:text="Raw debug output"
-            tools:layout_editor_absoluteX="0dp"
-            tools:layout_editor_absoluteY="42dp" />
-    </ScrollView>
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
 
+            <Button
+                android:id="@+id/exitButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Exit" />
+
+            <Button
+                android:id="@+id/resetButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:layout_weight="1"
+                android:text="Reset" />
+
+            <Button
+                android:id="@+id/simulateButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Simulate" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/layout1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/itemSpeedBrake"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="speedbrake_ratio"
+                android:textAlignment="center" />
+
+            <TextView
+                android:id="@+id/itemParkingBrake"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="parking_brake_ratio"
+                android:textAlignment="center" />
+
+            <TextView
+                android:id="@+id/itemLeftBrake"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="left_brake_ratio"
+                android:textAlignment="center" />
+
+            <TextView
+                android:id="@+id/itemRightBrake"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="right_brake_ratio"
+                android:textAlignment="center" />
+
+            <TextView
+                android:id="@+id/itemReverseThrust"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="reverse"
+                android:textAlignment="center" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/layout2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/itemFPS"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="frame_rate_period"
+                android:textAlignment="center" />
+
+            <TextView
+                android:id="@+id/itemIndicatedSpeed"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="indicated_airspeed"
+                android:textAlignment="center" />
+
+            <TextView
+                android:id="@+id/itemAltitudeMSL"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="elevation"
+                android:textAlignment="center" />
+
+            <TextView
+                android:id="@+id/itemAltitudeGround"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="y_agl"
+                android:textAlignment="center" />
+
+            <TextView
+                android:id="@+id/itemAltitudeGauge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="altitude_ft_pilot"
+                android:textAlignment="center" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/layout3"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/itemFlapsDesired"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="flaprqst"
+                android:textAlignment="center" />
+
+            <TextView
+                android:id="@+id/itemFlapsActual"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="flap_handle_deploy_ratio"
+                android:textAlignment="center" />
+
+            <TextView
+                android:id="@+id/itemForceVertical"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="g_nrml"
+                android:textAlignment="center" />
+
+            <TextView
+                android:id="@+id/itemForceGear"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="tire_vertical_force_n_mtr"
+                android:textAlignment="center" />
+
+            <TextView
+                android:id="@+id/itemDME1Distance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="nav1_dme_dist_m"
+                android:textAlignment="center" />
+
+            <TextView
+                android:id="@+id/itemDME2Distance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="nav2_dme_dist_m"
+                android:textAlignment="center" />
+
+        </LinearLayout>
+
+        <net.waynepiekarski.xplanemonitor.BarView
+            android:id="@+id/barForceVertical"
+            android:layout_width="match_parent"
+            android:layout_height="50px" />
+
+        <net.waynepiekarski.xplanemonitor.GraphView
+            android:id="@+id/graphForceVertical"
+            android:layout_width="match_parent"
+            android:layout_height="200px" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:visibility="gone"
+        android:id="@+id/layoutDebug"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <ScrollView
+            android:id="@+id/scrollView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <TextView
+                android:id="@+id/debugText"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:ems="10"
+                android:text="Raw debug output"
+                tools:layout_editor_absoluteX="0dp"
+                tools:layout_editor_absoluteY="42dp" />
+        </ScrollView>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:visibility="gone"
+        android:id="@+id/layoutMap"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/mapCoordinates"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="GPS Coordinates"
+            android:textAlignment="center" />
+
+        <com.google.android.gms.maps.MapView
+            android:id="@+id/mapView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+    </LinearLayout>
 </LinearLayout>
+
 </layout>
