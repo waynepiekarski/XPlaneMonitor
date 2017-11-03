@@ -23,6 +23,8 @@
 package net.waynepiekarski.xplanemonitor;
 
 import android.os.AsyncTask;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.widget.TextView;
 
@@ -39,13 +41,15 @@ import static junit.framework.Assert.assertEquals;
 /*
  *  Listens on a port and processes UDP packets from X-Plane
  */
-public class UDPReceiver extends AsyncTask<Integer, UDPReceiver.UDPData, Long> {
+public class UDPReceiver {
     long total;
     long count;
     String buffer;
     TextView statusView;
     OnReceiveUDP callback;
     DatagramSocket socket;
+    Thread thread;
+    volatile boolean cancelled = false;
 
     public class UDPData {
         private byte[] data;
@@ -61,28 +65,33 @@ public class UDPReceiver extends AsyncTask<Integer, UDPReceiver.UDPData, Long> {
 
     // Updates statusView with details (if not null)
     // Executes callback on UI thread at finish (if not null)
-    public UDPReceiver(int port, TextView inStatusView, OnReceiveUDP inCallback) {
+    public UDPReceiver(final int port, TextView inStatusView, OnReceiveUDP inCallback) {
         callback = inCallback;
         statusView = inStatusView;
         Log.d(Const.TAG, "Created AsyncTask for port " + port);
-        // Needed so we can run multiple AsyncTask without one being starved
-        // From http://stackoverflow.com/questions/4068984/running-multiple-asynctasks-at-the-same-time-not-possible
-        executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, port);
+        thread = new Thread(new Runnable() {
+            public void run() {
+                backgroundListener(port);
+            }
+        });
+        thread.start();
     }
 
-    protected Long doInBackground(Integer... ports) {
+    public void stopListener() {
+        cancelled = true;
+    }
+
+    protected void backgroundListener(int port) {
         int packetCount = 0;
-        assertEquals(ports.length, 1);
-        int port = ports[0];
         Log.d(Const.TAG, "Receiving UDP packets on port " + port);
         try {
             socket = new DatagramSocket(port);
-            // Only block for 1 second before trying again, allows us to check for isCancelled()
+            // Only block for 1 second before trying again, allows us to check for if cancelled
             socket.setSoTimeout(1000);
 
             byte[] buffer = new byte[64*1024]; // UDP maximum is 64kb
             DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-            while(!isCancelled()) {
+            while(!cancelled) {
                 // Log.d(Const.TAG, "Waiting for UDP packet on port " + port + " with maximum size " + buffer.length);
                 try {
                     socket.receive(packet);
@@ -90,42 +99,32 @@ public class UDPReceiver extends AsyncTask<Integer, UDPReceiver.UDPData, Long> {
                     // Log.d(Const.TAG, "Received packet with " + packet.getLength() + " bytes of data");
                     // Log.d(Const.TAG, "Hex dump = [" + bytesToHex(packet.getData(), packet.getLength()) + "]");
                     // Log.d(Const.TAG, "Txt dump = [" + bytesToChars(packet.getData(), packet.getLength()) + "]");
-                    UDPData data = new UDPData(buffer, packet.getLength());
+                    final UDPData data = new UDPData(buffer, packet.getLength());
+                    new Handler(Looper.getMainLooper()).post(new Runnable() {
+                        public void run() {
+                            // This runs on the UI thread
+                            //if (statusView != null)
+                            //statusView.setText("Downloaded " + progress[0]); // TODO: Update this value
+                            //if (callbackDREF != null)
+                            //callbackDREF.onReceive("Hello world"); // TODO: Update this string
+                            if (callback != null)
+                                callback.onReceiveUDP(data.get());
+                        }
+                    });
 
-                    publishProgress(data);
                 } catch (SocketTimeoutException e) {
                     // Log.d(Const.TAG, "Timeout, reading again ...");
                 } catch (IOException e) {
                     Log.e(Const.TAG, "Failed to read packet " + e);
                 }
             }
-            Log.d(Const.TAG, "AsyncTask cancelled, closing down UDP listener on port " + port);
+            Log.d(Const.TAG, "Thread is cancelled, closing down UDP listener on port " + port);
             socket.close();
         } catch (SocketException e) {
             Log.e(Const.TAG, "Failed to open socket " + e);
         }
 
-        Log.d(Const.TAG, "AsyncTask has ended");
-        return Long.valueOf(packetCount);
-    }
-
-    @Override
-    protected void onProgressUpdate(UDPData... progress) {
-        assertEquals(1, progress.length);
-        // Log.d(Const.TAG, "onProgressUpdate (UI thread)");
-        // This runs on the UI thread, we can use progress[0] or the packet text if we want
-        //if (statusView != null)
-            //statusView.setText("Downloaded " + progress[0]); // TODO: Update this value
-        //if (callbackDREF != null)
-            //callbackDREF.onReceive("Hello world"); // TODO: Update this string
-
-        if (callback != null)
-            callback.onReceiveUDP(progress[0].get());
-    }
-
-    protected void onPostExecute(Long result) {
-        // This runs on the UI thread after the AsyncTask finishes, nothing to do here
-        Log.d(Const.TAG, "onPostExecute (UI thread)");
+        Log.d(Const.TAG, "UDP listener thread for port " + port + " has ended");
     }
 
 

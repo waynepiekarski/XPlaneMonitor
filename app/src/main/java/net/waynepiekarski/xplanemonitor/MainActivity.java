@@ -195,8 +195,8 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
     @Override
     protected void onPause() {
         Log.d(Const.TAG, "onPause(), cancelling UDP listeners");
-        dref_listener.cancel(true);
-        data_listener.cancel(true);
+        dref_listener.stopListener();
+        data_listener.stopListener();
         binding.mapView.onPause();
         super.onPause();
     }
