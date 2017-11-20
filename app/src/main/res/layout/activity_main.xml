@@ -218,6 +218,14 @@
                 android:textAlignment="center" />
 
             <TextView
+                android:id="@+id/itemHeading"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="view_heading"
+                android:textAlignment="center" />
+
+            <TextView
                 android:id="@+id/itemForceVertical"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -240,6 +248,14 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/itemActualFPM"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="vh_ind_fpm"
+                android:textAlignment="center" />
 
             <TextView
                 android:id="@+id/itemEstimateFPM"

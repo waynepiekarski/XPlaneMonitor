@@ -380,6 +380,9 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
             } else if (name.equals("sim/cockpit/radios/nav2_dme_dist_m[0]")) {
                 setItemString(binding.itemDME2Distance, "NAV2 DME", oneDecimal.format(f) + "Nm", false);
                 indicator = true;
+            } else if (name.equals("sim/flightmodel/position/vh_ind_fpm")) {
+                setItemString(binding.itemActualFPM, "Actual FPM", oneDecimal.format(f) + "fpm", (f < -3000) || (f > 3000));
+                indicator = true;
             } else if (name.equals("sim/flightmodel/position/latitude")) {
                 indicator = true;
                 globalLatitude = f;
@@ -389,6 +392,7 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
                 globalLongitude = f;
                 setItemMap(globalLatitude, globalLongitude, globalHeading);
             } else if (name.equals("sim/graphics/view/view_heading")) {
+                setItemString(binding.itemHeading, "True Heading", oneDecimal.format(f) + "deg", false);
                 indicator = true;
                 globalHeading = f;
                 setItemMap(globalLatitude, globalLongitude, globalHeading);
