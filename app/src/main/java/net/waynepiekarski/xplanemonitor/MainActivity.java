@@ -76,6 +76,10 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
     float globalLongitude = 0.0f;
     float globalHeading = 0.0f;
 
+    float globalAirspeed = 0.0f;
+    float globalNav1Distance = 0.0f;
+    float globalAltitude = 0.0f;
+
     @Override
     public void onConfigurationChanged(Configuration config) {
         Log.d(Const.TAG, "onConfigurationChanged");
@@ -273,6 +277,18 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
                 .title("Line"));
     }
 
+    // Compute the feet-per-minute rate to get to NAV1 DME with 0 altitude at current airspeed
+    public void setGlideEstimate(float distance_nm, float airspeed_knots, float altitude_feet) {
+        float hours = distance_nm / airspeed_knots;
+        float minutes = hours * 60.0f;
+
+        float fpm = -altitude_feet / minutes;
+
+        setItemString(binding.itemEstimateMins, "NAV1 Est Mins", oneDecimal.format(minutes) + "mins", false);
+        setItemString(binding.itemEstimateFPM, "NAV1 Est FPM", (airspeed_knots < 100 || distance_nm < 0.1) ? "N/A" : oneDecimal.format(fpm) + "fpm", false);
+    }
+
+
     public void onReceiveUDP(byte[] buffer) {
         // Log.d(Const.TAG, "onReceiveUDP bytes=" + buffer.length);
         sequence++;
@@ -324,12 +340,16 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
                 indicator = true;
             } else if (name.equals("sim/flightmodel/position/indicated_airspeed[0]")) {
                 setItemString(binding.itemIndicatedSpeed, "Indicated Air Speed", oneDecimal.format(f) + "kts", false);
+                globalAirspeed = f;
+                setGlideEstimate(globalNav1Distance, globalAirspeed, globalAltitude);
                 indicator = true;
             } else if (name.equals("sim/flightmodel/position/y_agl[0]")) {
                 setItemString(binding.itemAltitudeGround, "Altitude AGL", oneDecimal.format(f * Const.METERS_TO_FEET) + "ft", false);
                 indicator = true;
             } else if (name.equals("sim/flightmodel/position/elevation[0]")) {
                 setItemString(binding.itemAltitudeMSL, "Altitude MSL", oneDecimal.format(f * Const.METERS_TO_FEET) + "ft", false);
+                globalAltitude = f * Const.METERS_TO_FEET;
+                setGlideEstimate(globalNav1Distance, globalAirspeed, globalAltitude);
                 indicator = true;
             } else if (name.equals("sim/cockpit2/gauges/indicators/altitude_ft_pilot[0]")) {
                 setItemString(binding.itemAltitudeGauge, "Altitude Gauge", oneDecimal.format(f) + "ft", false);
@@ -352,6 +372,8 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
                 indicator = true;
             } else if (name.equals("sim/cockpit/radios/nav1_dme_dist_m[0]")) {
                 setItemString(binding.itemDME1Distance, "NAV1 DME", oneDecimal.format(f) + "Nm", false);
+                globalNav1Distance = f;
+                setGlideEstimate(globalNav1Distance, globalAirspeed, globalAltitude);
                 indicator = true;
             } else if (name.equals("sim/cockpit/radios/nav2_dme_dist_m[0]")) {
                 setItemString(binding.itemDME2Distance, "NAV2 DME", oneDecimal.format(f) + "Nm", false);

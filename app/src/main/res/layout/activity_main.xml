@@ -233,6 +233,30 @@
                 android:text="tire_vertical_force_n_mtr"
                 android:textAlignment="center" />
 
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/layout4"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/itemEstimateFPM"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="estimate-nav1-fpm"
+                android:textAlignment="center" />
+
+            <TextView
+                android:id="@+id/itemEstimateMins"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="estimate-nav1-mins"
+                android:textAlignment="center" />
+
             <TextView
                 android:id="@+id/itemDME1Distance"
                 android:layout_width="wrap_content"
@@ -250,6 +274,7 @@
                 android:textAlignment="center" />
 
         </LinearLayout>
+
 
         <net.waynepiekarski.xplanemonitor.BarView
             android:id="@+id/barForceVertical"
