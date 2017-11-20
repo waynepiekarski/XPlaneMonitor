@@ -32,16 +32,19 @@ import android.view.View;
 
 public class BarView extends View {
 
-    private Paint mPaint;
+    private Paint mPaintNormal;
+    private Paint mPaintWarning;
     private double mValue;                 // Current value
     private double mMax;                   // Maximum +/- value allowed
-    private int mColor = Color.BLUE;       // Color to render with
+    private double mWarning;               // Warning +/- with different color
     private final static int mHeight = 20; // Height of the view in pixels
 
     public BarView(Context context, AttributeSet attrs) {
         super(context, attrs);
-        mPaint = new Paint();
-        mPaint.setColor(mColor);
+        mPaintNormal = new Paint();
+        mPaintNormal.setColor(Color.BLUE);
+        mPaintWarning = new Paint();
+        mPaintWarning.setColor(Color.RED);
         reset();
     }
 
@@ -55,11 +58,17 @@ public class BarView extends View {
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
+        Paint p;
+        if ((mValue < -mWarning) || (mValue > mWarning))
+            p = mPaintWarning;
+        else
+            p = mPaintNormal;
+
         // Draw a bar from the center out to the left or right depending on the mValue
         if (mValue >= 0)
-            canvas.drawRect(canvas.getWidth()/2, 0, (int)(canvas.getWidth()/2.0 + mValue/mMax*canvas.getWidth()/2.0), canvas.getHeight()-1, mPaint);
+            canvas.drawRect(canvas.getWidth()/2, 0, (int)(canvas.getWidth()/2.0 + mValue/mMax*canvas.getWidth()/2.0), canvas.getHeight()-1, p);
         else // Cannot render right to left so need to flip around X arguments
-            canvas.drawRect((int)(canvas.getWidth()/2.0 + mValue/mMax*canvas.getWidth()/2.0), 0, canvas.getWidth()/2, canvas.getHeight()-1, mPaint);
+            canvas.drawRect((int)(canvas.getWidth()/2.0 + mValue/mMax*canvas.getWidth()/2.0), 0, canvas.getWidth()/2, canvas.getHeight()-1, p);
     }
 
     public void setValue(double in) {
@@ -77,8 +86,16 @@ public class BarView extends View {
         }
     }
 
+    public void setWarning(double in) {
+        if (mWarning != in) {
+            mWarning = in;
+            invalidate();
+        }
+    }
+
     public void reset() {
         mMax = 1.0;
+        mWarning = 1.0;
         mValue = 0.0;
         invalidate();
     }

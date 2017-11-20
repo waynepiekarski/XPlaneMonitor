@@ -368,9 +368,9 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
                 setItemString(binding.itemForceGear, "Gear Force", oneDecimal.format(f) + "Nm", false);
                 indicator = true;
             } else if (name.equals("sim/flightmodel/forces/g_nrml[0]")) {
-                setItemString(binding.itemForceVertical, "Vert Force", oneDecimal.format(f) + "G", false);
-                binding.graphForceVertical.set1Value(f);
-                binding.barForceVertical.setValue(f);
+                setItemString(binding.itemForceVertical, "Vert Force", oneDecimal.format(f) + "G", (f < 0.75) || (f > 1.25));
+                binding.graphForceVertical.set1Value(f - 1.0); // Center around 1G
+                binding.barForceVertical.setValue(f - 1.0);
                 indicator = true;
             } else if (name.equals("sim/cockpit/radios/nav1_dme_dist_m[0]")) {
                 setItemString(binding.itemDME1Distance, "NAV1 DME", oneDecimal.format(f) + "Nm", false);
@@ -483,8 +483,9 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
         binding.barForceVertical.reset();
         binding.graphForceVertical.reset();
 
-        binding.barForceVertical.setMaximum(3.5); // +/- 3G maximum
-        binding.graphForceVertical.resetMaximum(3.5); // +/- 3G maximum
+        binding.barForceVertical.setMaximum(1.0); // +/- 1G (0G..2G)
+        binding.barForceVertical.setWarning(0.25);
+        binding.graphForceVertical.resetMaximum(1.0); // +/- 1G (0G..2G)
         binding.graphForceVertical.setSize(1); // Only 1 value on the graph
 
         if (googleMapMarker != null)
