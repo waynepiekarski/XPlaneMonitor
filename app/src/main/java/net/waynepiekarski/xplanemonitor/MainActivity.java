@@ -42,6 +42,7 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -69,9 +70,11 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
     ActivityMainBinding binding;
     GoogleMap googleMap;
     Marker googleMapMarker;
+    Marker googleMapLine;
 
     float globalLatitude = 0.0f;
     float globalLongitude = 0.0f;
+    float globalHeading = 0.0f;
 
     @Override
     public void onConfigurationChanged(Configuration config) {
@@ -124,8 +127,9 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
 
                 globalLatitude += 1;
                 globalLongitude += 1;
+                globalHeading += 1;
                 Log.d(Const.TAG, "Moving latitude and longitude to " + globalLatitude + " " + globalLongitude);
-                setItemMap(globalLatitude, globalLongitude);
+                setItemMap(globalLatitude, globalLongitude, globalHeading);
             }
         });
 
@@ -238,19 +242,35 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
             v.setBackgroundColor(Color.GREEN);
     }
 
-    public void setItemMap(float latitude, float longitude) {
+    public void setItemMap(float latitude, float longitude, float heading) {
         binding.mapCoordinates.setText("LatLong: "
                 + (latitude<0 ? "S" : "N")
                 + latitude
                 + " "
                 + (longitude<0 ? "W" : "E")
-                + longitude);
+                + longitude
+                + " - Heading: "
+                + heading);
 
         LatLng pos = new LatLng(latitude, longitude);
         googleMap.moveCamera(CameraUpdateFactory.newLatLng(pos));
         if (googleMapMarker != null)
             googleMapMarker.remove();
-        googleMapMarker = googleMap.addMarker(new MarkerOptions().position(pos).title("Airplane"));
+        if (googleMapLine != null)
+            googleMapLine.remove();
+        // Draw an airplane icon centered around the coordinates
+        googleMapMarker = googleMap.addMarker(new MarkerOptions()
+                .position(pos)
+                .rotation(heading)
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_airplane_alpha))
+                .anchor(0.5f,0.5f)
+                .title("Airplane"));
+        // Draw a line in the direction, need to use an image since there is no way to rotate a poly-line
+        googleMapLine = googleMap.addMarker(new MarkerOptions()
+                .position(pos)
+                .rotation(heading)
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.line512))
+                .title("Line"));
     }
 
     public void onReceiveUDP(byte[] buffer) {
@@ -339,11 +359,15 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
             } else if (name.equals("sim/flightmodel/position/latitude")) {
                 indicator = true;
                 globalLatitude = f;
-                setItemMap(globalLatitude, globalLongitude);
+                setItemMap(globalLatitude, globalLongitude, globalHeading);
             } else if (name.equals("sim/flightmodel/position/longitude")) {
                 indicator = true;
                 globalLongitude = f;
-                setItemMap(globalLatitude, globalLongitude);
+                setItemMap(globalLatitude, globalLongitude, globalHeading);
+            } else if (name.equals("sim/graphics/view/view_heading")) {
+                indicator = true;
+                globalHeading = f;
+                setItemMap(globalLatitude, globalLongitude, globalHeading);
             } else {
                 // We don't need this value, it will only appear in the debug dump
                 indicator = false;
