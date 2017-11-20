@@ -258,23 +258,25 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
 
         LatLng pos = new LatLng(latitude, longitude);
         googleMap.moveCamera(CameraUpdateFactory.newLatLng(pos));
-        if (googleMapMarker != null)
-            googleMapMarker.remove();
-        if (googleMapLine != null)
-            googleMapLine.remove();
-        // Draw an airplane icon centered around the coordinates
-        googleMapMarker = googleMap.addMarker(new MarkerOptions()
-                .position(pos)
-                .rotation(heading)
-                .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_airplane_alpha))
-                .anchor(0.5f,0.5f)
-                .title("Airplane"));
-        // Draw a line in the direction, need to use an image since there is no way to rotate a poly-line
-        googleMapLine = googleMap.addMarker(new MarkerOptions()
-                .position(pos)
-                .rotation(heading)
-                .icon(BitmapDescriptorFactory.fromResource(R.drawable.line512))
-                .title("Line"));
+        if (googleMapMarker == null) {
+            // Draw an airplane icon centered around the coordinates
+            googleMapMarker = googleMap.addMarker(new MarkerOptions()
+                    .position(pos)
+                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_airplane_alpha))
+                    .anchor(0.5f,0.5f)
+                    .title("Airplane"));
+        }
+        if (googleMapLine == null) {
+            // Draw a line in the direction, need to use an image since there is no way to rotate a poly-line
+            googleMapLine = googleMap.addMarker(new MarkerOptions()
+                    .position(pos)
+                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.line512))
+                    .title("Line"));
+        }
+        googleMapMarker.setPosition(pos);
+        googleMapMarker.setRotation(heading);
+        googleMapLine.setPosition(pos);
+        googleMapLine.setRotation(heading);
     }
 
     // Compute the feet-per-minute rate to get to NAV1 DME with 0 altitude at current airspeed
