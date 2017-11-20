@@ -63,7 +63,7 @@ public class MainActivity extends Activity implements UDPReceiver.OnReceiveUDP {
     TreeMap<String, Float> mapDREF;
     TreeMap<String, String> mapDATA;
     int sequence;
-    DecimalFormat oneDecimal = new DecimalFormat("#.#");
+    DecimalFormat oneDecimal = new DecimalFormat("0.0");
     DecimalFormat zeroDecimal = new DecimalFormat("#");
     String lastFlapsDesired = "";
     String lastFlapsActual = "";
