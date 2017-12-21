@@ -20,9 +20,9 @@
 //
 // ---------------------------------------------------------------------
 
-package net.waynepiekarski.xplanemonitor;
-class XPlaneData {
-  public static final String[] names = {
+package net.waynepiekarski.xplanemonitor
+internal object XPlaneData {
+  val names = arrayOf(
 "f-act",
 "f-sim",
 "frame",
@@ -712,10 +712,10 @@ class XPlaneData {
 "_gear",
 "_gear",
 "_gea",
-"_gear",
-  };
+"_gear"
+  )
 
-  public static final String[] units = {
+  val units = arrayOf(
 "_/sec",
 "_/sec",
 "_time",
@@ -1405,6 +1405,6 @@ class XPlaneData {
 "_rat",
 "_rat",
 "_rat",
-"_rat",
-  };
+"_rat"
+  )
 }
