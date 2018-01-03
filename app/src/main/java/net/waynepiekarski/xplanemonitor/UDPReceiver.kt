@@ -28,13 +28,13 @@ import android.util.Log
 import android.widget.TextView
 
 import java.io.IOException
-import java.net.DatagramPacket
-import java.net.DatagramSocket
-import java.net.SocketException
-import java.net.SocketTimeoutException
 import java.util.Arrays
 
 import junit.framework.Assert.assertEquals
+import java.io.ByteArrayOutputStream
+import java.net.*
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import kotlin.experimental.and
 
 
@@ -45,6 +45,7 @@ import kotlin.experimental.and
  */
 class UDPReceiver (port: Int, internal var statusView: TextView?, internal var callback: OnReceiveUDP?) {
     private var thread: Thread
+    private var socket: DatagramSocket? = null
     @Volatile private var cancelled = false
 
     inner class UDPData(arg: ByteArray, length: Int) {
@@ -69,20 +70,88 @@ class UDPReceiver (port: Int, internal var statusView: TextView?, internal var c
         cancelled = true
     }
 
+    public fun sendPacket(dp: DatagramPacket) {
+        Log.d(Const.TAG, "Sending outbound packet to " + socket.toString())
+        Log.d(Const.TAG, bytesToChars(dp.data, dp.data.size))
+//         Log.d(Const.TAG, bytesToHex(dp.data, dp.data.size))
+        socket!!.send(dp)
+    }
+
+    public fun sendCMND(name: String) {
+        val thread = Thread(Runnable {
+            val os = ByteArrayOutputStream()
+            os.write("CMND".toByteArray())
+            os.write(0x00)
+            os.write((name).toByteArray())
+            os.write(0x00)
+            val ba = os.toByteArray()
+
+            // TODO: Remove broadcast because we receive our own packets, transmit only back to the X-Plane instance
+            val dp = DatagramPacket(ba, ba.size, InetAddress.getByName("255.255.255.255"), Const.UDP_DATA_PORT)
+
+            Log.d(Const.TAG, "Sending outbound CMND packet to " + socket.toString())
+            Log.d(Const.TAG, bytesToChars(dp.data, dp.data.size))
+            Log.d(Const.TAG, bytesToHex(dp.data, dp.data.size))
+            socket!!.send(dp)
+        })
+        thread.start()
+    }
+
+    public fun sendDREF(name: String, value: Float) {
+        val thread = Thread(Runnable {
+            val os = ByteArrayOutputStream()
+            os.write("DREF".toByteArray())
+            os.write(0x00)
+            os.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putFloat(value).array())
+            os.write((name).toByteArray())
+            os.write(0x00)
+            for (i in 0 until 500 - 1 - name.length) {
+                os.write(0x20)
+            }
+
+            val ba = os.toByteArray()
+            val dp = DatagramPacket(ba, ba.size, InetAddress.getByName("255.255.255.255"), Const.UDP_DATA_PORT)
+            assertEquals(true, ba.size == 509)
+
+            Log.d(Const.TAG, "Sending outbound DREF packet to " + socket.toString())
+            Log.d(Const.TAG, bytesToChars(dp.data, dp.data.size))
+            Log.d(Const.TAG, bytesToHex(dp.data, dp.data.size))
+            socket!!.send(dp)
+        })
+        thread.start()
+    }
+
+
+    // Handle DREF+ packet type here
+    // ["DREF+"=5bytes] [float=4bytes] ["label/name/var[0]\0"=remaining_bytes]
+    /*
+    public fun createPacket(name: String, value: Float) : ByteArray {
+        val os = ByteArrayOutputStream()
+        os.write("DREF".toByteArray())
+        os.write(0x00)
+        val one = 1.0f
+        os.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putFloat(one).array())
+        os.write((name).toByteArray())
+        os.write(0x00)
+        val ba = os.toByteArray()
+        return ba
+    } */
+
     protected fun backgroundListener(port: Int) {
         var packetCount = 0
         Log.d(Const.TAG, "Receiving UDP packets on port " + port)
         try {
-            val socket = DatagramSocket(port)
+            socket = DatagramSocket(port)
             // Only block for 1 second before trying again, allows us to check for if cancelled
-            socket.soTimeout = 1000
+            socket!!.soTimeout = 1000
+            socket!!.broadcast = true
 
             val buffer = ByteArray(64 * 1024) // UDP maximum is 64kb
             val packet = DatagramPacket(buffer, buffer.size)
             while (!cancelled) {
                 // Log.d(Const.TAG, "Waiting for UDP packet on port " + port + " with maximum size " + buffer.length);
                 try {
-                    socket.receive(packet)
+                    socket!!.receive(packet)
                     packetCount++
                     // Log.d(Const.TAG, "Received packet with " + packet.getLength() + " bytes of data");
                     // Log.d(Const.TAG, "Hex dump = [" + bytesToHex(packet.getData(), packet.getLength()) + "]");
@@ -106,7 +175,7 @@ class UDPReceiver (port: Int, internal var statusView: TextView?, internal var c
 
             }
             Log.d(Const.TAG, "Thread is cancelled, closing down UDP listener on port " + port)
-            socket.close()
+            socket!!.close()
         } catch (e: SocketException) {
             Log.e(Const.TAG, "Failed to open socket " + e)
         }

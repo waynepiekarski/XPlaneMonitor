@@ -40,8 +40,11 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import kotlinx.android.synthetic.main.activity_main.*
+import java.io.ByteArrayOutputStream
 
 import java.io.IOException
+import java.net.DatagramPacket
+import java.net.InetAddress
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.text.DecimalFormat
@@ -69,6 +72,11 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP {
     internal var globalAirspeed = 0.0f
     internal var globalNav1Distance = 0.0f
     internal var globalAltitude = 0.0f
+
+    internal var landingLightsText = arrayOfNulls<TextView>(4)
+    internal var landingLightsValues = FloatArray(4)
+    internal var genericLightsText = arrayOfNulls<TextView>(10)
+    internal var genericLightsValues = FloatArray(10)
 
     override fun onConfigurationChanged(config: Configuration) {
         Log.d(Const.TAG, "onConfigurationChanged")
@@ -143,6 +151,61 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP {
             layoutDebug.visibility = View.GONE
             layoutMap.visibility = View.VISIBLE
             updateDebugUI()
+        }
+
+        efis_mode_dn.setOnClickListener {
+            Log.d(Const.TAG, "Changing EFIS mode")
+            dref_listener!!.sendCMND("sim/instruments/EFIS_mode_dn")
+        }
+
+        map_zoom_in.setOnClickListener {
+            Log.d(Const.TAG, "Changing map zoom in")
+            dref_listener!!.sendCMND("sim/instruments/map_zoom_in")
+        }
+
+        map_zoom_out.setOnClickListener {
+            Log.d(Const.TAG, "Changing map zoom in")
+            dref_listener!!.sendCMND("sim/instruments/map_zoom_out")
+        }
+
+        all_lights_on.setOnClickListener {
+            for (i in 0 until landingLightsText.size)
+                dref_listener!!.sendDREF("sim/cockpit2/switches/landing_lights_switch[$i]", 1.0f)
+            for (i in 0 until genericLightsText.size)
+                dref_listener!!.sendDREF("sim/cockpit2/switches/generic_lights_switch[$i]", 1.0f)
+        }
+
+        all_lights_off.setOnClickListener {
+            for (i in 0 until landingLightsText.size)
+                dref_listener!!.sendDREF("sim/cockpit2/switches/landing_lights_switch[$i]", 0.0f)
+            for (i in 0 until genericLightsText.size)
+                dref_listener!!.sendDREF("sim/cockpit2/switches/generic_lights_switch[$i]", 0.0f)
+        }
+
+        for (i in 0 until landingLightsText.size) {
+            val t = TextView(this)
+            t.setText("landing$i")
+            t.setPadding(20, 20, 20, 20)
+            layout_landing_lights.addView(t)
+            t.setOnClickListener { Log.d(Const.TAG, "Clicked landing_lights_switch[$i]") }
+            t.setOnClickListener {
+                val inverted = 1.0f - landingLightsValues[i]
+                Log.d(Const.TAG, "Clicked landing_lights_switch[$i] from " + landingLightsValues[i] + " to new " + inverted)
+                dref_listener!!.sendDREF("sim/cockpit2/switches/landing_lights_switch[$i]", inverted)
+            }
+            landingLightsText[i] = t
+        }
+        for (i in 0 until genericLightsText.size) {
+            val t = TextView(this)
+            t.setText("generic$i")
+            t.setPadding(20, 20, 20, 20)
+            layout_generic_lights.addView(t)
+            t.setOnClickListener {
+                val inverted = 1.0f - genericLightsValues[i]
+                Log.d(Const.TAG, "Clicked generic_lights_switch[$i] from " + genericLightsValues[i] + " to new " + inverted)
+                dref_listener!!.sendDREF("sim/cockpit2/switches/generic_lights_switch[$i]", inverted)
+            }
+            genericLightsText[i] = t
         }
 
         resetIndicators()
@@ -254,6 +317,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP {
             // ["DREF+"=5bytes] [float=4bytes] ["label/name/var[0]\0"=remaining_bytes]
             if (buffer[4] != '+'.toByte()) {
                 Log.e(Const.TAG, "Cannot parse [" + buffer[4] + "] when expected '+' symbol")
+                return
             }
             val f = ByteBuffer.wrap(buffer, +5, 4).order(ByteOrder.LITTLE_ENDIAN).float
             var zero: Int
@@ -352,6 +416,24 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP {
                 indicator = true
                 globalHeading = f
                 setItemMap(globalLatitude, globalLongitude, globalHeading)
+            } else if (name.startsWith("sim/cockpit2/switches/generic_lights_switch[")) {
+                // Extract out the number between [ ]
+                var s = name.substring(name.indexOf("[") + 1)
+                s = s.substring(0, s.indexOf("]"))
+                val n = s.toInt()
+                val t = genericLightsText[n]
+                t!!.setText("generic[$n]=" + f.toInt())
+                genericLightsValues[n] = f
+                indicator = true
+            } else if (name.startsWith("sim/cockpit2/switches/landing_lights_switch[")) {
+                // Extract out the number between [ ]
+                var s = name.substring(name.indexOf("[") + 1)
+                s = s.substring(0, s.indexOf("]"))
+                val n = s.toInt()
+                val t = landingLightsText[n]
+                t!!.setText("landing[$n]=" + f.toInt())
+                landingLightsValues[n] = f
+                indicator = true
             } else {
                 // We don't need this value, it will only appear in the debug dump
                 indicator = false
@@ -429,6 +511,12 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP {
                     val v = findViewById(res)
                     v.setBackgroundColor(Color.GRAY)
                 }
+            }
+            for (i in landingLightsText) {
+                i?.setBackgroundColor(Color.GRAY)
+            }
+            for (i in genericLightsText) {
+                i?.setBackgroundColor(Color.GRAY)
             }
         } catch (e: ClassNotFoundException) {
             Log.e(Const.TAG, "Could not locate R.id class")
