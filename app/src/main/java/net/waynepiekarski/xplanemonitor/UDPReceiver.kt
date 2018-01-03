@@ -119,17 +119,19 @@ class UDPReceiver (port: Int, internal var statusView: TextView?, internal var c
         // Extract all printable ASCII from a byte stream, do not print other chars
         fun bytesToChars(bytes: ByteArray, length: Int): String {
             assertEquals(true, bytes.size >= length)
-            val textChars = CharArray(length * 2)
+            val textChars = StringBuffer()
             for (j in 0 until length) {
-                var v = bytes[j].toInt()
-                if (v < 0x20 || v > 0x7e)
-                    v = '~'.toInt()
-                else
-                    v = bytes[j].toInt()
-                textChars[j * 2] = (v and 0x7F).toChar()
-                textChars[j * 2 + 1] = ' '
+                var v = bytes[j].toInt() and 0xFF
+                if (v < 0x20 || v > 0x7e) {
+                    textChars.append("(")
+                    textChars.append(hexArray[v / 16])
+                    textChars.append(hexArray[v and 0x0F])
+                    textChars.append(")")
+                } else {
+                    textChars.append((v and 0x7F).toChar())
+                }
             }
-            return String(textChars)
+            return textChars.toString()
         }
 
         // From http://stackoverflow.com/questions/9655181/how-to-convert-a-byte-array-to-a-hex-string-in-java
