@@ -154,17 +154,6 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             updateDebugUI()
         }
 
-        fun check_thread(address: InetAddress?, purpose: String, code: () -> Unit) {
-            if (address == null) {
-                Log.d(Const.TAG, "Skipping thread/send for [$purpose] because remote X-Plane is not discovered yet")
-            } else {
-                thread(start = true) {
-                    Log.d(Const.TAG, "Started thread/send for [$purpose]")
-                    code()
-                }
-            }
-        }
-
         efis_mode_dn.setOnClickListener {
             check_thread(xplane_address, "Changing EFIS mode") {
                 dref_listener!!.sendCMND(xplane_address!!, "sim/instruments/EFIS_mode_dn")
@@ -331,8 +320,16 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
 
     override fun onReceiveMulticast(buffer: ByteArray, source: InetAddress) {
         Log.d(Const.TAG, "Received BECN multicast packet from $source")
+        Log.d(Const.TAG, "BECN packet printable: " + UDPReceiver.bytesToChars(buffer, buffer.size))
+        Log.d(Const.TAG, "BECN packet hex: " + UDPReceiver.bytesToHex(buffer, buffer.size))
         xplaneHost.setText("X-Plane: " + source.getHostAddress())
         xplane_address = source
+
+        // Request values that we are interested in getting updates for
+        check_thread(xplane_address, "Requesting values via RREF") {
+            dref_listener!!.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_mode[0]", 2)
+            dref_listener!!.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_range_selector[0]", 2)
+        }
     }
 
     override fun onReceiveUDP(buffer: ByteArray) {
@@ -347,8 +344,8 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
                 return
             }
             val f = ByteBuffer.wrap(buffer, +5, 4).order(ByteOrder.LITTLE_ENDIAN).float
-            var zero: Int
-            zero = 9
+            // Find terminating null for the string
+            var zero: Int = 9
             while (zero < buffer.size && buffer[zero] != 0x00.toByte()) {
                 zero++
             }
@@ -475,6 +472,29 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             }
 
             updateDebugUI()
+        } else if (buffer.size >= 5 && buffer[0] == 'R'.toByte() && buffer[1] == 'R'.toByte() && buffer[2] == 'E'.toByte() && buffer[3] == 'F'.toByte()) {
+            // Handle RREF, packet type here, based on our earlier request
+            // ["RREF,"=5bytes]
+            // [id=4bytes] [float=4bytes]
+            // ...
+            Log.d(Const.TAG, "Found RREF packet: " + UDPReceiver.bytesToChars(buffer, buffer.size))
+            if (buffer[4] != ','.toByte()) {
+                Log.e(Const.TAG, "Cannot parse [" + buffer[4] + "] when expected ',' symbol")
+                return
+            }
+            if ((buffer.size-5) % 8 != 0) {
+                Log.e(Const.TAG, "Improper RREF message size " + buffer.size + " should be 5+8*n bytes")
+                return
+            }
+            // Read all blocks of 8 bytes in a loop until we run out
+            var index = 5
+            while (index < buffer.size) {
+                val id = ByteBuffer.wrap(buffer, index, 4).order(ByteOrder.LITTLE_ENDIAN).int
+                val value = ByteBuffer.wrap(buffer, index+4, 4).order(ByteOrder.LITTLE_ENDIAN).float
+                val name = dref_listener!!.lookupRREF(id)
+                Log.d(Const.TAG, "idx=$index: Parsed RREF with name=$name, id=$id, value=$value")
+                index += 8
+            }
         } else if (buffer.size >= 5 && buffer[0] == 'D'.toByte() && buffer[1] == 'A'.toByte() && buffer[2] == 'T'.toByte() && buffer[3] == 'A'.toByte() && buffer[4] == '*'.toByte()) {
             // Log.d(Const.TAG, "Found DATA* packet");
             // A data blob is an int (4 bytes) followed by 8 floats (8*4) = total 36
@@ -504,7 +524,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             if (start != buffer.size)
                 Log.e(Const.TAG, "Mismatch in buffer size, end was " + start + " but buffer length was " + buffer.size)
         } else {
-            Log.e(Const.TAG, "Ignoring unknown packet")
+            Log.e(Const.TAG, "Ignoring unknown packet: " + UDPReceiver.bytesToChars(buffer, buffer.size))
         }
     }
 
@@ -580,6 +600,17 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
                 i += 2
             }
             return data
+        }
+
+        fun check_thread(address: InetAddress?, purpose: String, code: () -> Unit) {
+            if (address == null) {
+                Log.d(Const.TAG, "Skipping thread/send for [$purpose] because remote X-Plane is not discovered yet")
+            } else {
+                thread(start = true) {
+                    Log.d(Const.TAG, "Started thread/send for [$purpose]")
+                    code()
+                }
+            }
         }
     }
 }

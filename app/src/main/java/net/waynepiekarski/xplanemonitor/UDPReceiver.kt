@@ -55,7 +55,7 @@ class UDPReceiver (port: Int, internal var callback: OnReceiveUDP) {
         val os = ByteArrayOutputStream()
         os.write("CMND".toByteArray())
         os.write(0x00)
-        os.write((name).toByteArray())
+        os.write(name.toByteArray())
         os.write(0x00)
         val ba = os.toByteArray()
         val dp = DatagramPacket(ba, ba.size, address, Const.UDP_DATA_PORT)
@@ -70,7 +70,7 @@ class UDPReceiver (port: Int, internal var callback: OnReceiveUDP) {
         os.write("DREF".toByteArray())
         os.write(0x00)
         os.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putFloat(value).array())
-        os.write((name).toByteArray())
+        os.write(name.toByteArray())
         os.write(0x00)
         for (i in 0 until 500 - 1 - name.length) {
             os.write(0x20)
@@ -84,6 +84,38 @@ class UDPReceiver (port: Int, internal var callback: OnReceiveUDP) {
         // Log.d(Const.TAG, bytesToHex(dp.data, dp.data.size))
         socket!!.send(dp)
     }
+
+    internal var rref_table = arrayOfNulls<String>(64)
+    internal var rref_id = 0
+
+    fun lookupRREF(id: Int): String? {
+        return rref_table[id]
+    }
+
+    fun sendRREF(address: InetAddress, name: String, freq: Int): String {
+        val id = rref_id
+        rref_table[id] = name
+        rref_id++
+        val os = ByteArrayOutputStream()
+        os.write("RREF".toByteArray())
+        os.write(0x00)
+        os.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(freq).array())
+        os.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(id).array())
+        os.write(name.toByteArray())
+        os.write(0x00)
+        for (i in 0 until 400 - 1 - name.length) {
+            os.write(0x20)
+        }
+
+        val ba = os.toByteArray()
+        val dp = DatagramPacket(ba, ba.size, address, Const.UDP_DATA_PORT)
+
+        Log.d(Const.TAG, "Sending outbound RREF packet with id=$id: " + bytesToChars(dp.data, dp.data.size))
+        // Log.d(Const.TAG, bytesToHex(dp.data, dp.data.size))
+        socket!!.send(dp)
+        return name
+    }
+
 
     init {
         Log.d(Const.TAG, "Created thread to listen on port " + port)
