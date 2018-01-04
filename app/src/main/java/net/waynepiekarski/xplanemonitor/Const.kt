@@ -26,5 +26,7 @@ object Const {
     val TAG = "XPlaneMonitor"
     val UDP_DATA_PORT = 49000
     val UDP_DREF_PORT = 49001
+    val BECN_PORT = 49707
+    val BECN_ADDRESS = "239.255.1.1"
     val METERS_TO_FEET = 3.28084f
 }

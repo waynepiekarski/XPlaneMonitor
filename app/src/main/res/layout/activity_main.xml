@@ -27,6 +27,14 @@
             tools:layout_editor_absoluteY="0dp" />
 
         <TextView
+            android:id="@+id/xplaneHost"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="No X-Plane Detected"
+            android:textAlignment="center" />
+
+        <TextView
             android:id="@+id/versionText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

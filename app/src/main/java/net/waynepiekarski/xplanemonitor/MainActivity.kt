@@ -40,20 +40,21 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import kotlinx.android.synthetic.main.activity_main.*
-import java.io.ByteArrayOutputStream
 
 import java.io.IOException
-import java.net.DatagramPacket
 import java.net.InetAddress
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.text.DecimalFormat
 import java.util.TreeMap
+import kotlin.concurrent.thread
 
-class MainActivity : Activity(), UDPReceiver.OnReceiveUDP {
+class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnReceiveMulticast {
 
+    internal var xplane_address: InetAddress? = null
     internal var data_listener: UDPReceiver? = null
     internal var dref_listener: UDPReceiver? = null
+    internal var becn_listener: MulticastReceiver? = null
     internal var mapDREF = TreeMap<String, Float>()
     internal var mapDATA = TreeMap<String, String>()
     internal var sequence = 0
@@ -153,33 +154,51 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP {
             updateDebugUI()
         }
 
+        fun check_thread(address: InetAddress?, purpose: String, code: () -> Unit) {
+            if (address == null) {
+                Log.d(Const.TAG, "Skipping thread/send for [$purpose] because remote X-Plane is not discovered yet")
+            } else {
+                thread(start = true) {
+                    Log.d(Const.TAG, "Started thread/send for [$purpose]")
+                    code()
+                }
+            }
+        }
+
         efis_mode_dn.setOnClickListener {
-            Log.d(Const.TAG, "Changing EFIS mode")
-            dref_listener!!.sendCMND("sim/instruments/EFIS_mode_dn")
+            check_thread(xplane_address, "Changing EFIS mode") {
+                dref_listener!!.sendCMND(xplane_address!!, "sim/instruments/EFIS_mode_dn")
+            }
         }
 
         map_zoom_in.setOnClickListener {
-            Log.d(Const.TAG, "Changing map zoom in")
-            dref_listener!!.sendCMND("sim/instruments/map_zoom_in")
+            check_thread(xplane_address, "Changing map zoom in") {
+                dref_listener!!.sendCMND(xplane_address!!, "sim/instruments/map_zoom_in")
+            }
         }
 
         map_zoom_out.setOnClickListener {
-            Log.d(Const.TAG, "Changing map zoom in")
-            dref_listener!!.sendCMND("sim/instruments/map_zoom_out")
+            check_thread(xplane_address, "Changing map zoom in") {
+                dref_listener!!.sendCMND(xplane_address!!, "sim/instruments/map_zoom_out")
+            }
         }
 
         all_lights_on.setOnClickListener {
-            for (i in 0 until landingLightsText.size)
-                dref_listener!!.sendDREF("sim/cockpit2/switches/landing_lights_switch[$i]", 1.0f)
-            for (i in 0 until genericLightsText.size)
-                dref_listener!!.sendDREF("sim/cockpit2/switches/generic_lights_switch[$i]", 1.0f)
+            check_thread(xplane_address, "Set all lights on") {
+                for (i in 0 until landingLightsText.size)
+                    dref_listener!!.sendDREF(xplane_address!!, "sim/cockpit2/switches/landing_lights_switch[$i]", 1.0f)
+                for (i in 0 until genericLightsText.size)
+                    dref_listener!!.sendDREF(xplane_address!!, "sim/cockpit2/switches/generic_lights_switch[$i]", 1.0f)
+            }
         }
 
         all_lights_off.setOnClickListener {
-            for (i in 0 until landingLightsText.size)
-                dref_listener!!.sendDREF("sim/cockpit2/switches/landing_lights_switch[$i]", 0.0f)
-            for (i in 0 until genericLightsText.size)
-                dref_listener!!.sendDREF("sim/cockpit2/switches/generic_lights_switch[$i]", 0.0f)
+            check_thread(xplane_address, "Set all lights off") {
+                for (i in 0 until landingLightsText.size)
+                    dref_listener!!.sendDREF(xplane_address!!, "sim/cockpit2/switches/landing_lights_switch[$i]", 0.0f)
+                for (i in 0 until genericLightsText.size)
+                    dref_listener!!.sendDREF(xplane_address!!, "sim/cockpit2/switches/generic_lights_switch[$i]", 0.0f)
+            }
         }
 
         for (i in 0 until landingLightsText.size) {
@@ -187,11 +206,11 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP {
             t.setText("landing$i")
             t.setPadding(20, 20, 20, 20)
             layout_landing_lights.addView(t)
-            t.setOnClickListener { Log.d(Const.TAG, "Clicked landing_lights_switch[$i]") }
             t.setOnClickListener {
                 val inverted = 1.0f - landingLightsValues[i]
-                Log.d(Const.TAG, "Clicked landing_lights_switch[$i] from " + landingLightsValues[i] + " to new " + inverted)
-                dref_listener!!.sendDREF("sim/cockpit2/switches/landing_lights_switch[$i]", inverted)
+                check_thread(xplane_address, "Clicked landing_lights_switch[$i] from " + landingLightsValues[i] + " to new " + inverted) {
+                    dref_listener!!.sendDREF(xplane_address!!, "sim/cockpit2/switches/landing_lights_switch[$i]", inverted)
+                }
             }
             landingLightsText[i] = t
         }
@@ -202,8 +221,9 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP {
             layout_generic_lights.addView(t)
             t.setOnClickListener {
                 val inverted = 1.0f - genericLightsValues[i]
-                Log.d(Const.TAG, "Clicked generic_lights_switch[$i] from " + genericLightsValues[i] + " to new " + inverted)
-                dref_listener!!.sendDREF("sim/cockpit2/switches/generic_lights_switch[$i]", inverted)
+                check_thread(xplane_address, "Clicked generic_lights_switch[$i] from " + genericLightsValues[i] + " to new " + inverted) {
+                    dref_listener!!.sendDREF(xplane_address!!, "sim/cockpit2/switches/generic_lights_switch[$i]", inverted)
+                }
             }
             genericLightsText[i] = t
         }
@@ -229,14 +249,16 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP {
         Log.d(Const.TAG, "onResume(), starting listeners with IP address " + ip)
         ipAddress.text = ip + ":" + Const.UDP_DREF_PORT + "/" + Const.UDP_DATA_PORT
 
-        dref_listener = UDPReceiver(Const.UDP_DREF_PORT, null, this)
-        data_listener = UDPReceiver(Const.UDP_DATA_PORT, null, this)
+        dref_listener = UDPReceiver(Const.UDP_DREF_PORT, this)
+        data_listener = UDPReceiver(Const.UDP_DATA_PORT, this)
+        becn_listener = MulticastReceiver(Const.BECN_ADDRESS, Const.BECN_PORT, this)
     }
 
     override fun onPause() {
         Log.d(Const.TAG, "onPause(), cancelling UDP listeners")
         dref_listener!!.stopListener()
         data_listener!!.stopListener()
+        becn_listener!!.stopListener()
         mapView.onPause()
         super.onPause()
     }
@@ -307,6 +329,11 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP {
         setItemString(itemEstimateFPM, "NAV1 Est FPM", if (airspeed_knots < 100 || distance_nm < 0.1) "N/A" else oneDecimal.format(fpm.toDouble()) + "fpm", false)
     }
 
+    override fun onReceiveMulticast(buffer: ByteArray, source: InetAddress) {
+        Log.d(Const.TAG, "Received BECN multicast packet from $source")
+        xplaneHost.setText("X-Plane: " + source.getHostAddress())
+        xplane_address = source
+    }
 
     override fun onReceiveUDP(buffer: ByteArray) {
         // Log.d(Const.TAG, "onReceiveUDP bytes=" + buffer.length);
