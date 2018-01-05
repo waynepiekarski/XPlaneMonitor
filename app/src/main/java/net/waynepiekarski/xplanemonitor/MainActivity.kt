@@ -329,8 +329,8 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
 
         val fpm = -altitude_feet / minutes
 
-        setItemString(itemEstimateMins, "NAV1 Est Mins", oneDecimal.format(minutes.toDouble()) + "mins", false)
-        setItemString(itemEstimateFPM, "NAV1 Est FPM", if (airspeed_knots < 100 || distance_nm < 0.1) "N/A" else oneDecimal.format(fpm.toDouble()) + "fpm", false)
+        setItemString(itemEstimateMins, "NAV1 Est Mins", if (airspeed_knots < 100 || distance_nm < 0.1) "N/A" else oneDecimal.format(minutes.toDouble()) + "mins", false)
+        setItemString(itemEstimateFPM,  "NAV1 Est FPM",  if (airspeed_knots < 100 || distance_nm < 0.1) "N/A" else oneDecimal.format(fpm.toDouble()) + "fpm", false)
     }
 
     override fun onReceiveMulticast(buffer: ByteArray, source: InetAddress) {
