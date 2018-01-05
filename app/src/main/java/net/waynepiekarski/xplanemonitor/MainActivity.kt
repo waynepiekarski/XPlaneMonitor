@@ -252,6 +252,19 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         super.onPause()
     }
 
+    override fun onWindowFocusChanged(hasFocus:Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_FULLSCREEN
+                or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
+        }
+    }
+
     fun getCompactFloat(arg: Float): String {
         // Round floats so ridiculously tiny values get called 0
         return if (arg < 0.00001)
