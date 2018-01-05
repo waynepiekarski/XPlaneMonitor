@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
 <LinearLayout
     android:id="@+id/activity_main"
@@ -14,11 +15,16 @@
         android:orientation="horizontal">
 
         <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="XPlaneMonitor"
+            android:textAlignment="center" />
+
+        <TextView
             android:id="@+id/ipAddress"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_alignParentStart="true"
-            android:layout_alignParentTop="true"
             android:layout_weight="1"
             android:ems="10"
             android:text="WiFi IP Address"
@@ -39,7 +45,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="n/a"
+            android:text="Version"
             android:textAlignment="center" />
 
     </LinearLayout>
@@ -49,14 +55,21 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal">
 
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@mipmap/ic_launcher" />
+
         <Button
             android:id="@+id/switchMainButton"
+            style="@android:style/Widget.Button.Small"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Main" />
 
         <Button
+            style="@android:style/Widget.Button.Small"
             android:id="@+id/switchDebugButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -64,11 +77,37 @@
             android:text="Debug" />
 
         <Button
+            style="@android:style/Widget.Button.Small"
             android:id="@+id/switchMapButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Map" />
+
+        <Button
+            android:id="@+id/exitButton"
+            style="@android:style/Widget.Button.Small"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Exit" />
+
+        <Button
+            android:id="@+id/resetButton"
+            style="@android:style/Widget.Button.Small"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:layout_weight="1"
+            android:text="Reset" />
+
+        <Button
+            android:id="@+id/simulateButton"
+            style="@android:style/Widget.Button.Small"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Simulate" />
 
     </LinearLayout>
 
@@ -82,28 +121,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal">
-
-            <Button
-                android:id="@+id/exitButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Exit" />
-
-            <Button
-                android:id="@+id/resetButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_centerHorizontal="true"
-                android:layout_weight="1"
-                android:text="Reset" />
-
-            <Button
-                android:id="@+id/simulateButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Simulate" />
 
         </LinearLayout>
 
@@ -300,17 +317,29 @@
         </LinearLayout>
 
         <LinearLayout
-            android:id="@+id/layout_landing_lights"
+            android:id="@+id/layout_lights"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal">
-        </LinearLayout>
 
-        <LinearLayout
-            android:id="@+id/layout_generic_lights"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            <Button
+                android:id="@+id/all_lights_on"
+                style="@android:style/Widget.Button.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:layout_weight="1"
+                android:text="Lights On" />
+
+            <Button
+                android:id="@+id/all_lights_off"
+                style="@android:style/Widget.Button.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:layout_weight="1"
+                android:text="Off" />
+
         </LinearLayout>
 
         <LinearLayout
@@ -320,6 +349,7 @@
 
             <Button
                 android:id="@+id/efis_mode_dn"
+                style="@android:style/Widget.Button.Small"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -327,35 +357,78 @@
 
             <Button
                 android:id="@+id/map_zoom_in"
+                style="@android:style/Widget.Button.Small"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerHorizontal="true"
                 android:layout_weight="1"
-                android:text="Map Zoom In" />
+                android:text="Map+" />
 
             <Button
                 android:id="@+id/map_zoom_out"
+                style="@android:style/Widget.Button.Small"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerHorizontal="true"
                 android:layout_weight="1"
-                android:text="Map Zoom Out" />
+                android:text="Map-" />
 
             <Button
-                android:id="@+id/all_lights_on"
+                android:id="@+id/efis_button_wxr"
+                style="@android:style/Widget.Button.Small"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_centerHorizontal="true"
                 android:layout_weight="1"
-                android:text="Lights On" />
+                android:text="WXR" />
 
             <Button
-                android:id="@+id/all_lights_off"
+                android:id="@+id/efis_button_sta"
+                style="@android:style/Widget.Button.Small"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_centerHorizontal="true"
                 android:layout_weight="1"
-                android:text="Lights Off" />
+                android:text="STA" />
+
+            <Button
+                android:id="@+id/efis_button_wpt"
+                style="@android:style/Widget.Button.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="WPT" />
+
+            <Button
+                android:id="@+id/efis_button_arpt"
+                style="@android:style/Widget.Button.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="ARPT" />
+
+            <Button
+                android:id="@+id/efis_button_data"
+                style="@android:style/Widget.Button.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="DATA" />
+
+            <Button
+                android:id="@+id/efis_button_pos"
+                style="@android:style/Widget.Button.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="POS" />
+
+            <Button
+                android:id="@+id/efis_button_terr"
+                style="@android:style/Widget.Button.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="TERR" />
+
 
         </LinearLayout>
 

@@ -31,6 +31,7 @@ import android.os.Bundle
 import android.text.format.Formatter
 import android.util.Log
 import android.view.View
+import android.widget.Button
 import android.widget.TextView
 
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -154,23 +155,24 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             updateDebugUI()
         }
 
-        efis_mode_dn.setOnClickListener {
-            check_thread(xplane_address, "Changing EFIS mode") {
-                dref_listener!!.sendCMND(xplane_address!!, "sim/instruments/EFIS_mode_dn")
+        fun button_to_cmnd(button: Button, cmnd: String) {
+            button.setOnClickListener {
+                check_thread(xplane_address, "Button for command $cmnd") {
+                    dref_listener!!.sendCMND(xplane_address!!, cmnd)
+                }
             }
         }
 
-        map_zoom_in.setOnClickListener {
-            check_thread(xplane_address, "Changing map zoom in") {
-                dref_listener!!.sendCMND(xplane_address!!, "sim/instruments/map_zoom_in")
-            }
-        }
-
-        map_zoom_out.setOnClickListener {
-            check_thread(xplane_address, "Changing map zoom in") {
-                dref_listener!!.sendCMND(xplane_address!!, "sim/instruments/map_zoom_out")
-            }
-        }
+        button_to_cmnd(efis_mode_dn, "sim/instruments/EFIS_mode_dn")
+        button_to_cmnd(map_zoom_out, "sim/instruments/map_zoom_out")
+        button_to_cmnd(map_zoom_in, "sim/instruments/map_zoom_in")
+        button_to_cmnd(efis_button_wxr, "laminar/B738/EFIS_control/capt/push_button/wxr_press")
+        button_to_cmnd(efis_button_sta, "laminar/B738/EFIS_control/capt/push_button/sta_press")
+        button_to_cmnd(efis_button_wpt, "laminar/B738/EFIS_control/capt/push_button/wpt_press")
+        button_to_cmnd(efis_button_arpt, "laminar/B738/EFIS_control/capt/push_button/arpt_press")
+        button_to_cmnd(efis_button_data, "laminar/B738/EFIS_control/capt/push_button/data_press")
+        button_to_cmnd(efis_button_pos, "laminar/B738/EFIS_control/capt/push_button/pos_press")
+        button_to_cmnd(efis_button_terr, "laminar/B738/EFIS_control/capt/push_button/terr_press")
 
         all_lights_on.setOnClickListener {
             check_thread(xplane_address, "Set all lights on") {
@@ -192,9 +194,9 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
 
         for (i in 0 until landingLightsText.size) {
             val t = TextView(this)
-            t.setText("landing$i")
+            t.setText("L$i=n/a")
             t.setPadding(20, 20, 20, 20)
-            layout_landing_lights.addView(t)
+            layout_lights.addView(t)
             t.setOnClickListener {
                 val inverted = 1.0f - landingLightsValues[i]
                 check_thread(xplane_address, "Clicked landing_lights_switch[$i] from " + landingLightsValues[i] + " to new " + inverted) {
@@ -205,9 +207,9 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         }
         for (i in 0 until genericLightsText.size) {
             val t = TextView(this)
-            t.setText("generic$i")
+            t.setText("G$=n/a")
             t.setPadding(20, 20, 20, 20)
-            layout_generic_lights.addView(t)
+            layout_lights.addView(t)
             t.setOnClickListener {
                 val inverted = 1.0f - genericLightsValues[i]
                 check_thread(xplane_address, "Clicked generic_lights_switch[$i] from " + genericLightsValues[i] + " to new " + inverted) {
@@ -459,7 +461,11 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
                 s = s.substring(0, s.indexOf("]"))
                 val n = s.toInt()
                 val t = genericLightsText[n]
-                t!!.setText("generic[$n]=" + f.toInt())
+                t!!.setText("G$n=" + f.toInt())
+                if (f.toInt() > 0)
+                    t!!.setBackgroundColor(Color.LTGRAY)
+                else
+                    t!!.setBackgroundColor(Color.GRAY)
                 genericLightsValues[n] = f
                 indicator = true
             } else if (name.startsWith("sim/cockpit2/switches/landing_lights_switch[")) {
@@ -468,7 +474,11 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
                 s = s.substring(0, s.indexOf("]"))
                 val n = s.toInt()
                 val t = landingLightsText[n]
-                t!!.setText("landing[$n]=" + f.toInt())
+                t!!.setText("L$n=" + f.toInt())
+                if (f.toInt() > 0)
+                    t!!.setBackgroundColor(Color.LTGRAY)
+                else
+                    t!!.setBackgroundColor(Color.GRAY)
                 landingLightsValues[n] = f
                 indicator = true
             } else {
