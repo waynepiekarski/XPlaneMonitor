@@ -166,6 +166,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         button_to_cmnd(efis_mode_dn, "sim/instruments/EFIS_mode_dn")
         button_to_cmnd(map_zoom_out, "sim/instruments/map_zoom_out")
         button_to_cmnd(map_zoom_in, "sim/instruments/map_zoom_in")
+        button_to_cmnd(efis_button_tfc, "laminar/B738/EFIS_control/capt/push_button/tfc_press")
         button_to_cmnd(efis_button_wxr, "laminar/B738/EFIS_control/capt/push_button/wxr_press")
         button_to_cmnd(efis_button_sta, "laminar/B738/EFIS_control/capt/push_button/sta_press")
         button_to_cmnd(efis_button_wpt, "laminar/B738/EFIS_control/capt/push_button/wpt_press")
@@ -342,9 +343,41 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
 
         // Request values that we are interested in getting updates for
         check_thread(xplane_address, "Requesting values via RREF") {
-            dref_listener!!.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_mode[0]", 2)
+            dref_listener!!.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_submode[0]", 2)
             dref_listener!!.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_range_selector[0]", 2)
+            dref_listener!!.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_airports[0]", 2)
+
         }
+    }
+
+    private fun processRREF(name: String, value: Float): Boolean {
+        val indicator: Boolean
+        if (name == "sim/cockpit/switches/EFIS_map_submode[0]") {
+            val mode: String
+            if (value.toInt() == 0)
+                mode = "APP"
+            else if (value.toInt() == 1)
+                mode = "VOR"
+            else if (value.toInt() == 2)
+                mode = "MAP"
+            else if (value.toInt() == 4)
+                mode = "PLN"
+            else
+                mode = "N/A"
+            efis_mode_dn.text = "EFIS " + mode
+            indicator = true
+        } else if (name == "sim/cockpit/switches/EFIS_map_range_selector[0]") {
+            val range = (1 shl value.toInt()) * 10
+            efis_button_tfc.text = "TFC " + range
+            indicator = true
+        } else if (name == "sim/cockpit/switches/EFIS_shows_airports[0]") {
+            efis_button_arpt.text = "ARPT" + value.toInt()
+            indicator = true
+        } else {
+            Log.e(Const.TAG, "Unhandled RREF name=$name, value=$value")
+            indicator = false
+        }
+        return indicator
     }
 
     override fun onReceiveUDP(buffer: ByteArray) {
@@ -463,9 +496,9 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
                 val t = genericLightsText[n]
                 t!!.setText("G$n=" + f.toInt())
                 if (f.toInt() > 0)
-                    t!!.setBackgroundColor(Color.LTGRAY)
+                    t.setBackgroundColor(Color.LTGRAY)
                 else
-                    t!!.setBackgroundColor(Color.GRAY)
+                    t.setBackgroundColor(Color.GRAY)
                 genericLightsValues[n] = f
                 indicator = true
             } else if (name.startsWith("sim/cockpit2/switches/landing_lights_switch[")) {
@@ -476,9 +509,9 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
                 val t = landingLightsText[n]
                 t!!.setText("L$n=" + f.toInt())
                 if (f.toInt() > 0)
-                    t!!.setBackgroundColor(Color.LTGRAY)
+                    t.setBackgroundColor(Color.LTGRAY)
                 else
-                    t!!.setBackgroundColor(Color.GRAY)
+                    t.setBackgroundColor(Color.GRAY)
                 landingLightsValues[n] = f
                 indicator = true
             } else {
@@ -500,7 +533,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             // ["RREF,"=5bytes]
             // [id=4bytes] [float=4bytes]
             // ...
-            Log.d(Const.TAG, "Found RREF packet: " + UDPReceiver.bytesToChars(buffer, buffer.size))
+            Log.d(Const.TAG, "Found RREF packet bytes=" + buffer.size + ": " + UDPReceiver.bytesToChars(buffer, buffer.size))
             if (buffer[4] != ','.toByte()) {
                 Log.e(Const.TAG, "Cannot parse [" + buffer[4] + "] when expected ',' symbol")
                 return
@@ -511,12 +544,16 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             }
             // Read all blocks of 8 bytes in a loop until we run out
             var index = 5
+            var item = 0
             while (index < buffer.size) {
                 val id = ByteBuffer.wrap(buffer, index, 4).order(ByteOrder.LITTLE_ENDIAN).int
                 val value = ByteBuffer.wrap(buffer, index+4, 4).order(ByteOrder.LITTLE_ENDIAN).float
                 val name = dref_listener!!.lookupRREF(id)
-                Log.d(Const.TAG, "idx=$index: Parsed RREF with name=$name, id=$id, value=$value")
+                Log.d(Const.TAG, "#$item, idx=$index: Parsed RREF with name=$name, id=$id, value=$value")
+                if (name != null)
+                    processRREF(name, value)
                 index += 8
+                item ++
             }
         } else if (buffer.size >= 5 && buffer[0] == 'D'.toByte() && buffer[1] == 'A'.toByte() && buffer[2] == 'T'.toByte() && buffer[3] == 'A'.toByte() && buffer[4] == '*'.toByte()) {
             // Log.d(Const.TAG, "Found DATA* packet");
