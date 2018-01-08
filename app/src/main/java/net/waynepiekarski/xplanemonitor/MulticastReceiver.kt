@@ -63,13 +63,12 @@ class MulticastReceiver (address: String, port: Int, internal var callback: OnRe
                         // Log.d(Const.TAG, "Received multicast packet with " + packet.length + " bytes of data");
                         // Log.d(Const.TAG, "Hex dump = [" + bytesToHex(packet.getData(), packet.getLength()) + "]");
                         // Log.d(Const.TAG, "Txt dump = [" + UDPReceiver.bytesToChars(packet.getData(), packet.getLength()) + "]");
-                        val data = Arrays.copyOfRange(buffer, 0, packet.length)
                         // getHostAddress appears to block and should not be called on the UI thread!
-                        val address = packet.getAddress()
-                        if (lastAddress == null || !lastAddress!!.equals(address)) {
-                            lastAddress = address
+                        val data = Arrays.copyOfRange(buffer, 0, packet.length)
+                        if (lastAddress == null || !lastAddress!!.equals(packet.address)) {
+                            lastAddress = packet.address
                             Handler(Looper.getMainLooper()).post {
-                                callback.onReceiveMulticast(data, address)
+                                callback.onReceiveMulticast(data, packet.address)
                             }
                         }
                     } catch (e: SocketTimeoutException) {
