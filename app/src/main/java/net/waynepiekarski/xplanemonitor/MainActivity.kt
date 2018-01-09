@@ -53,9 +53,9 @@ import kotlin.concurrent.thread
 class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnReceiveMulticast {
 
     internal var xplane_address: InetAddress? = null
-    internal var data_listener: UDPReceiver? = null
-    internal var dref_listener: UDPReceiver? = null
-    internal var becn_listener: MulticastReceiver? = null
+    internal lateinit var data_listener: UDPReceiver
+    internal lateinit var dref_listener: UDPReceiver
+    internal lateinit var becn_listener: MulticastReceiver
     internal var mapDREF = TreeMap<String, Float>()
     internal var mapDATA = TreeMap<String, String>()
     internal var sequence = 0
@@ -64,9 +64,9 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
     internal var zeroDecimal = DecimalFormat("#")
     internal var lastFlapsDesired = ""
     internal var lastFlapsActual = ""
-    internal var googleMap: GoogleMap? = null
-    internal var googleMapMarker: Marker? = null
-    internal var googleMapLine: Marker? = null
+    internal lateinit var googleMap: GoogleMap
+    internal lateinit var googleMapMarker: Marker
+    internal lateinit var googleMapLine: Marker
 
     internal var globalLatitude = 0.0f
     internal var globalLongitude = 0.0f
@@ -159,9 +159,9 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         fun button_to_cmnd(button: Button, cmnd: String, cmnd2: String? = null) {
             button.setOnClickListener {
                 check_thread(xplane_address, "Button for command $cmnd") {
-                    dref_listener!!.sendCMND(xplane_address!!, cmnd)
+                    dref_listener.sendCMND(xplane_address!!, cmnd)
                     if (cmnd2 != null)
-                        dref_listener!!.sendCMND(xplane_address!!, cmnd2)
+                        dref_listener.sendCMND(xplane_address!!, cmnd2)
                 }
             }
         }
@@ -181,18 +181,18 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         all_lights_on.setOnClickListener {
             check_thread(xplane_address, "Set all lights on") {
                 for (i in 0 until landingLightsText.size)
-                    dref_listener!!.sendDREF(xplane_address!!, "sim/cockpit2/switches/landing_lights_switch[$i]", 1.0f)
+                    dref_listener.sendDREF(xplane_address!!, "sim/cockpit2/switches/landing_lights_switch[$i]", 1.0f)
                 for (i in 0 until genericLightsText.size)
-                    dref_listener!!.sendDREF(xplane_address!!, "sim/cockpit2/switches/generic_lights_switch[$i]", 1.0f)
+                    dref_listener.sendDREF(xplane_address!!, "sim/cockpit2/switches/generic_lights_switch[$i]", 1.0f)
             }
         }
 
         all_lights_off.setOnClickListener {
             check_thread(xplane_address, "Set all lights off") {
                 for (i in 0 until landingLightsText.size)
-                    dref_listener!!.sendDREF(xplane_address!!, "sim/cockpit2/switches/landing_lights_switch[$i]", 0.0f)
+                    dref_listener.sendDREF(xplane_address!!, "sim/cockpit2/switches/landing_lights_switch[$i]", 0.0f)
                 for (i in 0 until genericLightsText.size)
-                    dref_listener!!.sendDREF(xplane_address!!, "sim/cockpit2/switches/generic_lights_switch[$i]", 0.0f)
+                    dref_listener.sendDREF(xplane_address!!, "sim/cockpit2/switches/generic_lights_switch[$i]", 0.0f)
             }
         }
 
@@ -204,7 +204,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             t.setOnClickListener {
                 val inverted = 1.0f - landingLightsValues[i]
                 check_thread(xplane_address, "Clicked landing_lights_switch[$i] from " + landingLightsValues[i] + " to new " + inverted) {
-                    dref_listener!!.sendDREF(xplane_address!!, "sim/cockpit2/switches/landing_lights_switch[$i]", inverted)
+                    dref_listener.sendDREF(xplane_address!!, "sim/cockpit2/switches/landing_lights_switch[$i]", inverted)
                 }
             }
             landingLightsText[i] = t
@@ -217,7 +217,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             t.setOnClickListener {
                 val inverted = 1.0f - genericLightsValues[i]
                 check_thread(xplane_address, "Clicked generic_lights_switch[$i] from " + genericLightsValues[i] + " to new " + inverted) {
-                    dref_listener!!.sendDREF(xplane_address!!, "sim/cockpit2/switches/generic_lights_switch[$i]", inverted)
+                    dref_listener.sendDREF(xplane_address!!, "sim/cockpit2/switches/generic_lights_switch[$i]", inverted)
                 }
             }
             genericLightsText[i] = t
@@ -231,7 +231,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         mapView.getMapAsync { map ->
             googleMap = map
             val pos = LatLng(0.0, 0.0) // Move the map to a default origin
-            googleMap!!.moveCamera(CameraUpdateFactory.newLatLng(pos))
+            googleMap.moveCamera(CameraUpdateFactory.newLatLng(pos))
         }
     }
 
@@ -251,9 +251,9 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
 
     override fun onPause() {
         Log.d(Const.TAG, "onPause(), cancelling UDP listeners")
-        dref_listener!!.stopListener()
-        data_listener!!.stopListener()
-        becn_listener!!.stopListener()
+        dref_listener.stopListener()
+        data_listener.stopListener()
+        becn_listener.stopListener()
         mapView.onPause()
         super.onPause()
     }
@@ -294,6 +294,8 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
     }
 
     fun setItemMap(latitude: Float, longitude: Float, heading: Float) {
+        if (!::googleMap.isInitialized)
+            return
         mapCoordinates.text = ("LatLong: "
                 + (if (latitude < 0) "S" else "N")
                 + fourDecimal.format(latitude)
@@ -304,26 +306,26 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
                 + zeroDecimal.format(heading))
 
         val pos = LatLng(latitude.toDouble(), longitude.toDouble())
-        googleMap!!.moveCamera(CameraUpdateFactory.newLatLng(pos))
-        if (googleMapMarker == null) {
+        googleMap.moveCamera(CameraUpdateFactory.newLatLng(pos))
+        if (!::googleMapMarker.isInitialized) {
             // Draw an airplane icon centered around the coordinates
-            googleMapMarker = googleMap!!.addMarker(MarkerOptions()
+            googleMapMarker = googleMap.addMarker(MarkerOptions()
                     .position(pos)
                     .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_airplane_alpha))
                     .anchor(0.5f, 0.5f)
                     .title("Airplane"))
         }
-        if (googleMapLine == null) {
+        if (!::googleMapLine.isInitialized) {
             // Draw a line in the direction, need to use an image since there is no way to rotate a poly-line
-            googleMapLine = googleMap!!.addMarker(MarkerOptions()
+            googleMapLine = googleMap.addMarker(MarkerOptions()
                     .position(pos)
                     .icon(BitmapDescriptorFactory.fromResource(R.drawable.line512))
                     .title("Line"))
         }
-        googleMapMarker!!.position = pos
-        googleMapMarker!!.rotation = heading
-        googleMapLine!!.position = pos
-        googleMapLine!!.rotation = heading
+        googleMapMarker.position = pos
+        googleMapMarker.rotation = heading
+        googleMapLine.position = pos
+        googleMapLine.rotation = heading
     }
 
     // Compute the feet-per-minute rate to get to NAV1 DME with 0 altitude at current airspeed
@@ -346,13 +348,13 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
 
         // Request values that we are interested in getting updates for
         check_thread(xplane_address, "Requesting values via RREF") {
-            dref_listener!!.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_submode[0]", 2)
-            dref_listener!!.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_range_selector[0]", 2)
-            dref_listener!!.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_tcas[0]", 2)
-            dref_listener!!.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_airports[0]", 2)
-            dref_listener!!.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_waypoints[0]", 2)
-            dref_listener!!.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_VORs[0]", 2)
-            dref_listener!!.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_weather[0]", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_submode[0]", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_range_selector[0]", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_tcas[0]", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_airports[0]", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_waypoints[0]", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_VORs[0]", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_weather[0]", 2)
         }
     }
 
@@ -566,8 +568,8 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             while (index < buffer.size) {
                 val id = ByteBuffer.wrap(buffer, index, 4).order(ByteOrder.LITTLE_ENDIAN).int
                 val value = ByteBuffer.wrap(buffer, index+4, 4).order(ByteOrder.LITTLE_ENDIAN).float
-                val name = dref_listener!!.lookupRREF(id)
-                if (id < dref_listener!!.rref_base) {
+                val name = dref_listener.lookupRREF(id)
+                if (id < dref_listener.rref_base) {
                     Log.e(Const.TAG, "#$item, idx=$index: Ignoring invalid id=$id, value=$value less than base ")
                 } else if (name != null) {
                     Log.d(Const.TAG, "#$item, idx=$index: Parsed RREF with name=$name, id=$id, value=$value")
@@ -656,16 +658,8 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             e.printStackTrace()
         }
 
-        barForceVertical.reset()
-        graphForceVertical.reset()
-
-        barForceVertical.setMaximum(1.0) // +/- 1G (0G..2G)
-        barForceVertical.setWarning(0.25)
-        graphForceVertical.resetMaximum(1.0) // +/- 1G (0G..2G)
-        graphForceVertical.setSize(1) // Only 1 value on the graph
-
-        if (googleMapMarker != null)
-            googleMapMarker!!.remove()
+        barForceVertical.resetLimits(max=1.0, warn=0.25) // +/- 1G (0G..2G)
+        graphForceVertical.resetLimits(max=1.0, size=1) // +/- 1G (0G..2G), only 1 value on the graph
     }
 
     companion object {

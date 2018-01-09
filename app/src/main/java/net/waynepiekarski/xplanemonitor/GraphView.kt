@@ -38,14 +38,14 @@ class GraphView(context: Context, attrs: AttributeSet) : View(context, attrs) {
     private val foreground = Paint()
     private val background = Paint()
     private val leader = Paint()
-    private var mMax: Double = 0.toDouble()
+    private var mMax: Double = -1.0
     private var step: Int = 0
     private var stepNext: Int = 0
     private var stepPrev: Int = 0
-    private var current: DoubleArray? = null
-    private var prev: DoubleArray? = null
-    private var bitmap: Bitmap? = null
-    private var canvas: Canvas? = null
+    private lateinit var current: DoubleArray
+    private lateinit var prev: DoubleArray
+    private lateinit var bitmap: Bitmap
+    private lateinit var canvas: Canvas
     private val palette = intArrayOf(Color.RED, Color.GREEN, Color.BLUE, Color.CYAN, Color.MAGENTA, Color.YELLOW)
     private val paint = Array(palette.size, { _ -> Paint() })
 
@@ -56,7 +56,7 @@ class GraphView(context: Context, attrs: AttributeSet) : View(context, attrs) {
         for (i in palette.indices) {
             paint[i].color = palette[i]
         }
-        reset()
+        resetLimits()
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -66,52 +66,52 @@ class GraphView(context: Context, attrs: AttributeSet) : View(context, attrs) {
     }
 
     private fun clearBitmap() {
-        if (bitmap != null || canvas != null) {
-            canvas!!.drawColor(background.color)
-            canvas!!.drawRect(0f, 0f, (canvas!!.width - 1).toFloat(), 0f, foreground)
-            canvas!!.drawRect((canvas!!.width - 1).toFloat(), 0f, (canvas!!.width - 1).toFloat(), (canvas!!.height - 1).toFloat(), foreground)
-            canvas!!.drawRect((canvas!!.width - 1).toFloat(), (canvas!!.height - 1).toFloat(), 0f, (canvas!!.height - 1).toFloat(), foreground)
-            canvas!!.drawRect(0f, (canvas!!.height - 1).toFloat(), 0f, 0f, foreground)
+        if (::canvas.isInitialized) {
+            canvas.drawColor(background.color)
+            canvas.drawRect(0f, 0f, (canvas.width - 1).toFloat(), 0f, foreground)
+            canvas.drawRect((canvas.width - 1).toFloat(), 0f, (canvas.width - 1).toFloat(), (canvas.height - 1).toFloat(), foreground)
+            canvas.drawRect((canvas.width - 1).toFloat(), (canvas.height - 1).toFloat(), 0f, (canvas.height - 1).toFloat(), foreground)
+            canvas.drawRect(0f, (canvas.height - 1).toFloat(), 0f, 0f, foreground)
         }
     }
 
     override fun onDraw(liveCanvas: Canvas) {
-        super.onDraw(canvas)
-
-        if (bitmap == null || bitmap!!.width != canvas!!.width || bitmap!!.height != canvas!!.height) {
+        if (!::bitmap.isInitialized || bitmap.width != liveCanvas.width || bitmap.height != liveCanvas.height) {
             bitmap = Bitmap.createBitmap(liveCanvas.width, liveCanvas.height, Bitmap.Config.ARGB_8888)
-            canvas = Canvas(bitmap!!)
+            canvas = Canvas(bitmap)
             clearBitmap()
         }
 
+        super.onDraw(canvas)
+
         // Clear out pixels on the current column before we draw here
-        canvas!!.drawLine(step.toFloat(), 0f, step.toFloat(), canvas!!.height.toFloat(), background)
-        canvas!!.drawLine(stepNext.toFloat(), 0f, stepNext.toFloat(), canvas!!.height.toFloat(), leader)
+        canvas.drawLine(step.toFloat(), 0f, step.toFloat(), canvas.height.toFloat(), background)
+        canvas.drawLine(stepNext.toFloat(), 0f, stepNext.toFloat(), canvas.height.toFloat(), leader)
 
         // Plot the latest data at the current column
-        if (current != null) {
-            for (i in current!!.indices) {
+        if (::current.isInitialized) {
+            for (i in current.indices) {
                 val x1 = stepPrev
-                val y1 = (canvas!!.height / 2.0 + prev!![i] / mMax * canvas!!.height / 2.0).toInt()
+                val y1 = (canvas.height / 2.0 + prev[i] / mMax * canvas.height / 2.0).toInt()
                 val x2 = step
-                val y2 = (canvas!!.height / 2.0 + current!![i] / mMax * canvas!!.height / 2.0).toInt()
+                val y2 = (canvas.height / 2.0 + current[i] / mMax * canvas.height / 2.0).toInt()
 
                 // Only draw if there is no wrap-around
                 if (x2 > x1)
-                    canvas!!.drawLine(x1.toFloat(), y1.toFloat(), x2.toFloat(), y2.toFloat(), paint[i])
+                    canvas.drawLine(x1.toFloat(), y1.toFloat(), x2.toFloat(), y2.toFloat(), paint[i])
             }
         }
 
-        liveCanvas.drawBitmap(bitmap!!, 0f, 0f, foreground)
+        liveCanvas.drawBitmap(bitmap, 0f, 0f, foreground)
 
         step += 1
-        if (step > canvas!!.width)
+        if (step > canvas.width)
             step = 0
         stepNext += 1
-        if (stepNext > canvas!!.width)
+        if (stepNext > canvas.width)
             stepNext = 0
         stepPrev += 1
-        if (stepPrev > canvas!!.width)
+        if (stepPrev > canvas.width)
             stepPrev = 0
 
         // Save the current values as previous values for the next run
@@ -120,43 +120,36 @@ class GraphView(context: Context, attrs: AttributeSet) : View(context, attrs) {
         current = temp
     }
 
-    fun setSize(arg: Int) {
-        var length = arg
-        if (length > palette.size)
-            length = palette.size
-        if (current == null || length != current!!.size) {
-            current = DoubleArray(length)
-            prev = DoubleArray(length)
-        }
-    }
-
     fun setValues(arg: FloatArray) {
-        Assert.assertEquals("Mismatch between incoming length " + current!!.size + " with existing " + arg.size, min(arg.size, palette.size), current!!.size)
+        Assert.assertEquals("Mismatch between incoming length " + current.size + " with existing " + arg.size, min(arg.size, palette.size), current.size)
         for (i in 0 until min(arg.size, palette.size))
-            current!![i] = arg[i].toDouble()
+            current[i] = arg[i].toDouble()
         invalidate()
     }
 
     fun set1Value(arg: Double) {
-        Assert.assertEquals("Mismatch between incoming length " + current!!.size + " with existing 1", 1, current!!.size)
-        current!![0] = arg
+        Assert.assertEquals("Mismatch between incoming length " + current.size + " with existing 1", 1, current.size)
+        current[0] = arg
         invalidate()
     }
 
-    fun resetMaximum(arg: Double) {
-        reset()
-        mMax = arg
-        invalidate()
-    }
-
-    fun reset() {
-        current = null
-        prev = null
+    fun resetLimits(max: Double = 1.0, size: Int = 1) {
         step = 0
         stepNext = step + 1
         stepPrev = step - 1
         mMax = 1.0
+
+        var length = size
+        if (length > palette.size)
+            length = palette.size
+        if (!::current.isInitialized || length != current.size) {
+            current = DoubleArray(length)
+            prev = DoubleArray(length)
+        }
+
         clearBitmap()
+        mMax = max
+        invalidate()
     }
 
     companion object {

@@ -40,7 +40,7 @@ import kotlin.experimental.and
 
 
 class UDPReceiver (port: Int, internal var callback: OnReceiveUDP) {
-    private var socket: DatagramSocket? = null
+    private lateinit var socket: DatagramSocket
     @Volatile private var cancelled = false
 
     interface OnReceiveUDP {
@@ -62,7 +62,7 @@ class UDPReceiver (port: Int, internal var callback: OnReceiveUDP) {
 
         Log.d(Const.TAG, "Sending outbound CMND packet: " + bytesToChars(dp.data, dp.data.size))
         // Log.d(Const.TAG, bytesToHex(dp.data, dp.data.size))
-        socket!!.send(dp)
+        socket.send(dp)
     }
 
     fun sendDREF(address: InetAddress, name: String, value: Float) {
@@ -82,7 +82,7 @@ class UDPReceiver (port: Int, internal var callback: OnReceiveUDP) {
 
         Log.d(Const.TAG, "Sending outbound DREF packet: " + bytesToChars(dp.data, dp.data.size))
         // Log.d(Const.TAG, bytesToHex(dp.data, dp.data.size))
-        socket!!.send(dp)
+        socket.send(dp)
     }
 
     internal var rref_table = arrayOfNulls<String>(64)
@@ -121,7 +121,7 @@ class UDPReceiver (port: Int, internal var callback: OnReceiveUDP) {
 
         Log.d(Const.TAG, "Sending outbound RREF packet with id=$id: " + bytesToChars(dp.data, dp.data.size))
         // Log.d(Const.TAG, bytesToHex(dp.data, dp.data.size))
-        socket!!.send(dp)
+        socket.send(dp)
         return name
     }
 
@@ -147,7 +147,7 @@ class UDPReceiver (port: Int, internal var callback: OnReceiveUDP) {
 
             Log.d(Const.TAG, "Sending outbound cancel RREF packet with id=$id: " + bytesToChars(dp.data, dp.data.size))
             // Log.d(Const.TAG, bytesToHex(dp.data, dp.data.size))
-            socket!!.send(dp)
+            socket.send(dp)
         }
         rref_offset = 0
     }
@@ -161,15 +161,15 @@ class UDPReceiver (port: Int, internal var callback: OnReceiveUDP) {
             try {
                 socket = DatagramSocket(port)
                 // Only block for 1 second before trying again, allows us to check for if cancelled
-                socket!!.soTimeout = 1000
-                socket!!.broadcast = true
+                socket.soTimeout = 1000
+                socket.broadcast = true
 
                 val buffer = ByteArray(64 * 1024) // UDP maximum is 64kb
                 val packet = DatagramPacket(buffer, buffer.size)
                 while (!cancelled) {
                     // Log.d(Const.TAG, "Waiting for UDP packet on port " + port + " with maximum size " + buffer.length);
                     try {
-                        socket!!.receive(packet)
+                        socket.receive(packet)
                         packetCount++
                         // Log.d(Const.TAG, "Received packet with " + packet.getLength() + " bytes of data");
                         // Log.d(Const.TAG, "Hex dump = [" + bytesToHex(packet.getData(), packet.getLength()) + "]");
@@ -187,7 +187,7 @@ class UDPReceiver (port: Int, internal var callback: OnReceiveUDP) {
 
                 }
                 Log.d(Const.TAG, "Thread is cancelled, closing down UDP listener on port " + port)
-                socket!!.close()
+                socket.close()
             } catch (e: SocketException) {
                 Log.e(Const.TAG, "Failed to open socket " + e)
             }
@@ -217,7 +217,7 @@ class UDPReceiver (port: Int, internal var callback: OnReceiveUDP) {
         }
 
         // From http://stackoverflow.com/questions/9655181/how-to-convert-a-byte-array-to-a-hex-string-in-java
-        protected val hexArray = "0123456789ABCDEF".toCharArray()
+        private val hexArray = "0123456789ABCDEF".toCharArray()
 
         fun bytesToHex(bytes: ByteArray, length: Int): String {
             assertEquals(true, bytes.size >= length)

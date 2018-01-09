@@ -34,15 +34,15 @@ class BarView(context: Context, attrs: AttributeSet) : View(context, attrs) {
 
     private val mPaintNormal = Paint()
     private val mPaintWarning = Paint()
-    private var mValue: Double = 0.toDouble()   // Current value
-    private var mMax: Double = 0.toDouble()     // Maximum +/- value allowed
-    private var mWarning: Double = 0.toDouble() // Warning +/- with different color
-    private val mHeight = 20                    // Height of the view in pixels
+    private var mValue   = 0.0 // Current value
+    private var mMax     = 1.0 // Maximum +/- value allowed
+    private var mWarning = 0.0 // Warning +/- with different color
+    private val mHeight  = 20  // Height of the view in pixels
 
     init {
         mPaintNormal.color = Color.BLUE
         mPaintWarning.color = Color.RED
-        reset()
+        resetLimits()
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -74,24 +74,9 @@ class BarView(context: Context, attrs: AttributeSet) : View(context, attrs) {
         }
     }
 
-    fun setMaximum(arg: Double) {
-        if (mMax != arg) {
-            mMax = arg
-            mValue = 0.0
-            invalidate()
-        }
-    }
-
-    fun setWarning(arg: Double) {
-        if (mWarning != arg) {
-            mWarning = arg
-            invalidate()
-        }
-    }
-
-    fun reset() {
-        mMax = 1.0
-        mWarning = 1.0
+    fun resetLimits(max: Double = 1.0, warn: Double = 0.0) {
+        mMax = max
+        mWarning = warn
         mValue = 0.0
         invalidate()
     }

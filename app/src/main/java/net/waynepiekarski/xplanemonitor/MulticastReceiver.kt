@@ -34,7 +34,7 @@ import kotlin.concurrent.thread
 
 
 class MulticastReceiver (address: String, port: Int, internal var callback: OnReceiveMulticast) {
-    private var socket: MulticastSocket? = null
+    private lateinit var socket: MulticastSocket
     @Volatile private var cancelled = false
     private var lastAddress: InetAddress? = null
 
@@ -50,15 +50,15 @@ class MulticastReceiver (address: String, port: Int, internal var callback: OnRe
             try {
                 socket = MulticastSocket(port)
                 // Only block for 1 second before trying again, allows us to check for if cancelled
-                socket!!.soTimeout = 1000
-                socket!!.joinGroup(InetAddress.getByName(address))
+                socket.soTimeout = 1000
+                socket.joinGroup(InetAddress.getByName(address))
 
                 val buffer = ByteArray(64 * 1024) // UDP maximum is 64kb
                 val packet = DatagramPacket(buffer, buffer.size)
                 while (!cancelled) {
                     // Log.d(Const.TAG, "Waiting for multicast packet on port " + port + " with maximum size " + buffer.size);
                     try {
-                        socket!!.receive(packet)
+                        socket.receive(packet)
                         packetCount++
                         // Log.d(Const.TAG, "Received multicast packet with " + packet.length + " bytes of data");
                         // Log.d(Const.TAG, "Hex dump = [" + bytesToHex(packet.getData(), packet.getLength()) + "]");
@@ -80,7 +80,7 @@ class MulticastReceiver (address: String, port: Int, internal var callback: OnRe
                     }
                 }
                 Log.d(Const.TAG, "Thread is cancelled, closing down multicast listener on port " + port)
-                socket!!.close()
+                socket.close()
             } catch (e: SocketException) {
                 Log.e(Const.TAG, "Failed to open socket " + e)
             }
