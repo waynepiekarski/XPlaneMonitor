@@ -86,16 +86,25 @@ class UDPReceiver (port: Int, internal var callback: OnReceiveUDP) {
     }
 
     internal var rref_table = arrayOfNulls<String>(64)
-    internal var rref_id = 0
+    internal var rref_offset = 0
+    val rref_base = 1000 // Start at any number not zero so we know if it is an expected value or not
 
     fun lookupRREF(id: Int): String? {
-        return rref_table[id]
+        if (id == 0) {
+            // Log.e(Const.TAG, "Invalid zero id value")
+            return null
+        } else if (id-rref_base >= rref_offset) {
+            // Log.e(Const.TAG, "Invalid id=$id out of bounds")
+            return null
+        } else {
+            return rref_table[id - rref_base]
+        }
     }
 
     fun sendRREF(address: InetAddress, name: String, freq: Int): String {
-        val id = rref_id
-        rref_table[id] = name
-        rref_id++
+        val id = rref_offset + rref_base
+        rref_table[rref_offset] = name
+        rref_offset++
         val os = ByteArrayOutputStream()
         os.write("RREF".toByteArray())
         os.write(0x00)
@@ -104,7 +113,7 @@ class UDPReceiver (port: Int, internal var callback: OnReceiveUDP) {
         os.write(name.toByteArray())
         os.write(0x00)
         for (i in 0 until 400 - 1 - name.length) {
-            os.write(0x20)
+            os.write(0x00)
         }
 
         val ba = os.toByteArray()
@@ -114,6 +123,33 @@ class UDPReceiver (port: Int, internal var callback: OnReceiveUDP) {
         // Log.d(Const.TAG, bytesToHex(dp.data, dp.data.size))
         socket!!.send(dp)
         return name
+    }
+
+    fun cancelRREF(address: InetAddress) {
+        for (i in 0..rref_offset-1) {
+            val id = i + rref_base
+            val os = ByteArrayOutputStream()
+            os.write("RREF".toByteArray())
+            os.write(0x00)
+            val freq = 0
+            os.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(freq).array())
+            os.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(id).array())
+            val name = rref_table[i]
+            rref_table[i] = null // Clear out the old entry
+            os.write(name!!.toByteArray())
+            os.write(0x00)
+            for (z in 0 until 400 - 1 - name.length) {
+                os.write(0x00)
+            }
+
+            val ba = os.toByteArray()
+            val dp = DatagramPacket(ba, ba.size, address, Const.UDP_DATA_PORT)
+
+            Log.d(Const.TAG, "Sending outbound cancel RREF packet with id=$id: " + bytesToChars(dp.data, dp.data.size))
+            // Log.d(Const.TAG, bytesToHex(dp.data, dp.data.size))
+            socket!!.send(dp)
+        }
+        rref_offset = 0
     }
 
 

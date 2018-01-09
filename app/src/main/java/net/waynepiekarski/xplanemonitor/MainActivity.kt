@@ -549,9 +549,14 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
                 val id = ByteBuffer.wrap(buffer, index, 4).order(ByteOrder.LITTLE_ENDIAN).int
                 val value = ByteBuffer.wrap(buffer, index+4, 4).order(ByteOrder.LITTLE_ENDIAN).float
                 val name = dref_listener!!.lookupRREF(id)
-                Log.d(Const.TAG, "#$item, idx=$index: Parsed RREF with name=$name, id=$id, value=$value")
-                if (name != null)
+                if (id < dref_listener!!.rref_base) {
+                    Log.e(Const.TAG, "#$item, idx=$index: Ignoring invalid id=$id, value=$value less than base ")
+                } else if (name != null) {
+                    Log.d(Const.TAG, "#$item, idx=$index: Parsed RREF with name=$name, id=$id, value=$value")
                     processRREF(name, value)
+                } else {
+                    Log.e(Const.TAG, "#$item, idx=$index: Ignoring unexpected RREF with id=$id, value=$value")
+                }
                 index += 8
                 item ++
             }
