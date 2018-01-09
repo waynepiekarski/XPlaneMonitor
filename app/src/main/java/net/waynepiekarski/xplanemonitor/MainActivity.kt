@@ -346,8 +346,11 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         check_thread(xplane_address, "Requesting values via RREF") {
             dref_listener!!.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_submode[0]", 2)
             dref_listener!!.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_range_selector[0]", 2)
+            dref_listener!!.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_tcas[0]", 2)
             dref_listener!!.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_airports[0]", 2)
-
+            dref_listener!!.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_waypoints[0]", 2)
+            dref_listener!!.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_VORs[0]", 2)
+            dref_listener!!.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_weather[0]", 2)
         }
     }
 
@@ -369,10 +372,22 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             indicator = true
         } else if (name == "sim/cockpit/switches/EFIS_map_range_selector[0]") {
             val range = (1 shl value.toInt()) * 10
-            efis_button_tfc.text = "TFC " + range
+            map_zoom_range.text = "" + range + "nm"
+            indicator = true
+        } else if (name == "sim/cockpit/switches/EFIS_shows_tcas[0]") {
+            efis_button_tfc.text = "TFC" + value.toInt()
             indicator = true
         } else if (name == "sim/cockpit/switches/EFIS_shows_airports[0]") {
             efis_button_arpt.text = "ARPT" + value.toInt()
+            indicator = true
+        } else if (name == "sim/cockpit/switches/EFIS_shows_waypoints[0]") {
+            efis_button_wpt.text = "WPT" + value.toInt()
+            indicator = true
+        } else if (name == "sim/cockpit/switches/EFIS_shows_VORs[0]") {
+            efis_button_sta.text = "STA" + value.toInt()
+            indicator = true
+        } else if (name == "sim/cockpit/switches/EFIS_shows_weather[0]") {
+            efis_button_wxr.text = "WXR" + value.toInt()
             indicator = true
         } else {
             Log.e(Const.TAG, "Unhandled RREF name=$name, value=$value")

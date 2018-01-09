@@ -362,7 +362,16 @@
                 android:layout_height="wrap_content"
                 android:layout_centerHorizontal="true"
                 android:layout_weight="1"
-                android:text="Map+" />
+                android:text="Z+" />
+
+            <Button
+                android:id="@+id/map_zoom_range"
+                style="@android:style/Widget.Button.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:layout_weight="1"
+                android:text="Map Range" />
 
             <Button
                 android:id="@+id/map_zoom_out"
@@ -371,7 +380,7 @@
                 android:layout_height="wrap_content"
                 android:layout_centerHorizontal="true"
                 android:layout_weight="1"
-                android:text="Map-" />
+                android:text="Z-" />
 
             <Button
                 android:id="@+id/efis_button_tfc"
