@@ -329,7 +329,7 @@
                 android:layout_height="wrap_content"
                 android:layout_centerHorizontal="true"
                 android:layout_weight="1"
-                android:text="Lights On" />
+                android:text="On" />
 
             <Button
                 android:id="@+id/all_lights_off"

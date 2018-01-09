@@ -196,7 +196,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
 
         for (i in 0 until landingLightsText.size) {
             val t = TextView(this)
-            t.setText("L$i=n/a")
+            t.setText("L$i")
             t.setPadding(20, 20, 20, 20)
             layout_lights.addView(t)
             t.setOnClickListener {
@@ -209,7 +209,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         }
         for (i in 0 until genericLightsText.size) {
             val t = TextView(this)
-            t.setText("G$=n/a")
+            t.setText("G$i")
             t.setPadding(20, 20, 20, 20)
             layout_lights.addView(t)
             t.setOnClickListener {
@@ -495,7 +495,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
                 s = s.substring(0, s.indexOf("]"))
                 val n = s.toInt()
                 val t = genericLightsText[n]
-                t!!.setText("G$n=" + f.toInt())
+                t!!.setText("G$n")
                 if (f.toInt() > 0)
                     t.setBackgroundColor(Color.LTGRAY)
                 else
@@ -508,7 +508,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
                 s = s.substring(0, s.indexOf("]"))
                 val n = s.toInt()
                 val t = landingLightsText[n]
-                t!!.setText("L$n=" + f.toInt())
+                t!!.setText("L$n")
                 if (f.toInt() > 0)
                     t.setBackgroundColor(Color.LTGRAY)
                 else
