@@ -156,10 +156,12 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             updateDebugUI()
         }
 
-        fun button_to_cmnd(button: Button, cmnd: String) {
+        fun button_to_cmnd(button: Button, cmnd: String, cmnd2: String? = null) {
             button.setOnClickListener {
                 check_thread(xplane_address, "Button for command $cmnd") {
                     dref_listener!!.sendCMND(xplane_address!!, cmnd)
+                    if (cmnd2 != null)
+                        dref_listener!!.sendCMND(xplane_address!!, cmnd2)
                 }
             }
         }
@@ -171,7 +173,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         button_to_cmnd(efis_button_wxr, "laminar/B738/EFIS_control/capt/push_button/wxr_press")
         button_to_cmnd(efis_button_sta, "laminar/B738/EFIS_control/capt/push_button/sta_press")
         button_to_cmnd(efis_button_wpt, "laminar/B738/EFIS_control/capt/push_button/wpt_press")
-        button_to_cmnd(efis_button_arpt, "laminar/B738/EFIS_control/capt/push_button/arpt_press")
+        button_to_cmnd(efis_button_arpt, "laminar/B738/EFIS_control/capt/push_button/arpt_press", "1-sim/ndpanel/1/hsiWxr") //"1-sim/ndpanel/2/map3")
         button_to_cmnd(efis_button_data, "laminar/B738/EFIS_control/capt/push_button/data_press")
         button_to_cmnd(efis_button_pos, "laminar/B738/EFIS_control/capt/push_button/pos_press")
         button_to_cmnd(efis_button_terr, "laminar/B738/EFIS_control/capt/push_button/terr_press")
