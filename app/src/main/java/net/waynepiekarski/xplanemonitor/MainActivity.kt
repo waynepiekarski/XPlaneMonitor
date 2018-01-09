@@ -59,6 +59,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
     internal var mapDREF = TreeMap<String, Float>()
     internal var mapDATA = TreeMap<String, String>()
     internal var sequence = 0
+    internal var fourDecimal = DecimalFormat("0.0000")
     internal var oneDecimal = DecimalFormat("0.0")
     internal var zeroDecimal = DecimalFormat("#")
     internal var lastFlapsDesired = ""
@@ -293,12 +294,12 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
     fun setItemMap(latitude: Float, longitude: Float, heading: Float) {
         mapCoordinates.text = ("LatLong: "
                 + (if (latitude < 0) "S" else "N")
-                + latitude
+                + fourDecimal.format(latitude)
                 + " "
                 + (if (longitude < 0) "W" else "E")
-                + longitude
+                + fourDecimal.format(longitude)
                 + " - Heading: "
-                + heading)
+                + zeroDecimal.format(heading))
 
         val pos = LatLng(latitude.toDouble(), longitude.toDouble())
         googleMap!!.moveCamera(CameraUpdateFactory.newLatLng(pos))
