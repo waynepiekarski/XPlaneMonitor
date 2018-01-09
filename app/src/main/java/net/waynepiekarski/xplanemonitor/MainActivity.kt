@@ -166,6 +166,14 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             }
         }
 
+        fun button_to_dref(button: Button, name: String) {
+            button.setOnClickListener {
+                check_thread(xplane_address, "Button for dref $name") {
+                    dref_listener.sendDREF(xplane_address!!, name, 1.0f)
+                }
+            }
+        }
+
         button_to_cmnd(efis_mode_dn, "sim/instruments/EFIS_mode_dn")
         button_to_cmnd(map_zoom_out, "sim/instruments/map_zoom_out")
         button_to_cmnd(map_zoom_in, "sim/instruments/map_zoom_in")
@@ -173,7 +181,9 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         button_to_cmnd(efis_button_wxr, "laminar/B738/EFIS_control/capt/push_button/wxr_press")
         button_to_cmnd(efis_button_sta, "laminar/B738/EFIS_control/capt/push_button/sta_press")
         button_to_cmnd(efis_button_wpt, "laminar/B738/EFIS_control/capt/push_button/wpt_press")
-        button_to_cmnd(efis_button_arpt, "laminar/B738/EFIS_control/capt/push_button/arpt_press", "1-sim/ndpanel/1/hsiWxr") //"1-sim/ndpanel/2/map3")
+        // TEST OUT LNAV BUTTON, IF THIS DOESN'T WORK THEN TRY SENDING A DATAREF INSTEAD
+        button_to_cmnd(efis_button_arpt, "laminar/B738/EFIS_control/capt/push_button/arpt_press", "1-sim/AP/lnavButton") //"1-sim/ndpanel/1/hsiWxr") //"1-sim/ndpanel/2/map3")
+        // button_to_dref(efis_button_arpt, "1-sim/AP/lnavButton")
         button_to_cmnd(efis_button_data, "laminar/B738/EFIS_control/capt/push_button/data_press")
         button_to_cmnd(efis_button_pos, "laminar/B738/EFIS_control/capt/push_button/pos_press")
         button_to_cmnd(efis_button_terr, "laminar/B738/EFIS_control/capt/push_button/terr_press")
