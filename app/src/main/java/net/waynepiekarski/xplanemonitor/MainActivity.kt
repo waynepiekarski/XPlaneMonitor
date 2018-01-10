@@ -549,12 +549,14 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
                 indicator = false
             }
 
-            if (indicator) {
-                // We requested this item
-                mapDREF.put("Indicate: " + name, f)
-            } else {
-                // We didn't need this item, it will only be visible in the debug dump
-                mapDREF.put("Unused: " + name, f)
+            if (isDebugUI()) {
+                if (indicator) {
+                    // We requested this item
+                    mapDREF.put("Indicate: " + name, f)
+                } else {
+                    // We didn't need this item, it will only be visible in the debug dump
+                    mapDREF.put("Unused: " + name, f)
+                }
             }
 
             updateDebugUI()
@@ -597,23 +599,26 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             val blob_length = 4 + 8 * 4
             var start: Int
             start = 5
+            val array = FloatArray(8)
             while (start < buffer.size) {
                 val id = ByteBuffer.wrap(buffer, start, 4).order(ByteOrder.LITTLE_ENDIAN).int
                 val idx = start + 4
-                val array = FloatArray(8)
-                var debugArray = "["
+                var debugArray = if (isDebugUI()) "[" else null
                 for (f in 0..7) {
                     array[f] = ByteBuffer.wrap(buffer, idx, 4).order(ByteOrder.LITTLE_ENDIAN).float
-                    // Round floats so ridiculously tiny values get called 0
-                    debugArray += XPlaneData.names[id * 8 + f] + "(" + XPlaneData.units[id * 8 + f] + ")="
-                    debugArray += getCompactFloat(array[f])
-                    if (f < 7)
-                        debugArray += ", "
+                    if (debugArray != null) {
+                        debugArray += XPlaneData.names[id * 8 + f] + "(" + XPlaneData.units[id * 8 + f] + ")="
+                        debugArray += getCompactFloat(array[f])
+                        if (f < 7)
+                            debugArray += ", "
+                    }
                 }
-                debugArray += "]"
                 // Log.d(Const.TAG, "DATA* id=" + id + " array=" + debugArray);
-                mapDATA.put("DATA*" + id, debugArray)
-                updateDebugUI()
+                if (debugArray != null) {
+                    debugArray += "]"
+                    mapDATA.put("DATA*" + id, debugArray)
+                    updateDebugUI()
+                }
                 start += blob_length
             }
             if (start != buffer.size)
@@ -623,10 +628,15 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         }
     }
 
+    inline fun isDebugUI(): Boolean {
+        return (layoutDebug.visibility == View.VISIBLE)
+    }
+
     fun updateDebugUI() {
         // If debug mode is not visible, do nothing
-        if (layoutDebug.visibility != View.VISIBLE)
+        if (!isDebugUI()) {
             return
+        }
 
         // Dump out current list of everything
         var out = "sequence=" + sequence + "\n"
