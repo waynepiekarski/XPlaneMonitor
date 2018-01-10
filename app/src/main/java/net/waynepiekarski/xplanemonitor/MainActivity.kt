@@ -567,7 +567,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             // ["RREF,"=5bytes]
             // [id=4bytes] [float=4bytes]
             // ...
-            Log.d(Const.TAG, "Found RREF packet bytes=" + buffer.size + ": " + UDPReceiver.bytesToChars(buffer, buffer.size))
+            // Log.d(Const.TAG, "Found RREF packet bytes=" + buffer.size + ": " + UDPReceiver.bytesToChars(buffer, buffer.size))
             if (buffer[4] != ','.toByte()) {
                 Log.e(Const.TAG, "Cannot parse [" + buffer[4] + "] when expected ',' symbol")
                 return
@@ -586,7 +586,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
                 if (id < dref_listener.rref_base) {
                     Log.e(Const.TAG, "#$item, idx=$index: Ignoring invalid id=$id, value=$value less than base ")
                 } else if (name != null) {
-                    Log.d(Const.TAG, "#$item, idx=$index: Parsed RREF with name=$name, id=$id, value=$value")
+                    // Log.d(Const.TAG, "#$item, idx=$index: Parsed RREF with name=$name, id=$id, value=$value")
                     processRREF(name, value)
                 } else {
                     Log.e(Const.TAG, "#$item, idx=$index: Ignoring unexpected RREF with id=$id, value=$value")

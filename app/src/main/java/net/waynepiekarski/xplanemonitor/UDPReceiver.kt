@@ -60,7 +60,8 @@ class UDPReceiver (port: Int, internal var callback: OnReceiveUDP) {
         val ba = os.toByteArray()
         val dp = DatagramPacket(ba, ba.size, address, Const.UDP_DATA_PORT)
 
-        Log.d(Const.TAG, "Sending outbound CMND packet: " + bytesToChars(dp.data, dp.data.size))
+        Log.d(Const.TAG, "Sending outbound CMND packet [$name]")
+        // Log.d(Const.TAG, "Sending outbound CMND packet [$name] " + bytesToChars(dp.data, dp.data.size))
         // Log.d(Const.TAG, bytesToHex(dp.data, dp.data.size))
         socket.send(dp)
     }
@@ -73,14 +74,15 @@ class UDPReceiver (port: Int, internal var callback: OnReceiveUDP) {
         os.write(name.toByteArray())
         os.write(0x00)
         for (i in 0 until 500 - 1 - name.length) {
-            os.write(0x20)
+            os.write(0x00)
         }
 
         val ba = os.toByteArray()
         val dp = DatagramPacket(ba, ba.size, address, Const.UDP_DATA_PORT)
         assertEquals(true, ba.size == 509)
 
-        Log.d(Const.TAG, "Sending outbound DREF packet: " + bytesToChars(dp.data, dp.data.size))
+        Log.d(Const.TAG, "Sending outbound DREF packet [$name] value=$value")
+        // Log.d(Const.TAG, "Sending outbound DREF packet [$name] value=$value: " + bytesToChars(dp.data, dp.data.size))
         // Log.d(Const.TAG, bytesToHex(dp.data, dp.data.size))
         socket.send(dp)
     }
@@ -119,7 +121,8 @@ class UDPReceiver (port: Int, internal var callback: OnReceiveUDP) {
         val ba = os.toByteArray()
         val dp = DatagramPacket(ba, ba.size, address, Const.UDP_DATA_PORT)
 
-        Log.d(Const.TAG, "Sending outbound RREF packet with id=$id: " + bytesToChars(dp.data, dp.data.size))
+        Log.d(Const.TAG, "Sending outbound RREF request id=$id for [$name]")
+        // Log.d(Const.TAG, "Sending outbound RREF request $id for [$name] " + bytesToChars(dp.data, dp.data.size))
         // Log.d(Const.TAG, bytesToHex(dp.data, dp.data.size))
         socket.send(dp)
         return name
@@ -145,7 +148,7 @@ class UDPReceiver (port: Int, internal var callback: OnReceiveUDP) {
             val ba = os.toByteArray()
             val dp = DatagramPacket(ba, ba.size, address, Const.UDP_DATA_PORT)
 
-            Log.d(Const.TAG, "Sending outbound cancel RREF packet with id=$id: " + bytesToChars(dp.data, dp.data.size))
+            Log.d(Const.TAG, "Sending outbound cancel RREF packet with id=$id for [$name]: " + bytesToChars(dp.data, dp.data.size))
             // Log.d(Const.TAG, bytesToHex(dp.data, dp.data.size))
             socket.send(dp)
         }
