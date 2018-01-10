@@ -82,6 +82,9 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
     internal var genericLightsText = arrayOfNulls<TextView>(10)
     internal var genericLightsValues = FloatArray(10)
 
+    internal var efis_mode_state = 0
+
+
     override fun onConfigurationChanged(config: Configuration) {
         Log.d(Const.TAG, "onConfigurationChanged")
         super.onConfigurationChanged(config)
@@ -185,7 +188,19 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         }
 
 
-        button_to_cmnd(efis_mode_dn, "sim/instruments/EFIS_mode_dn")
+        efis_mode_change.setOnClickListener {
+            val efis_mode_prev = efis_mode_state
+            val efis_mode_next = if(efis_mode_state >= 3) 0 else efis_mode_state+1
+            efis_mode_state = efis_mode_next
+            check_thread(xplane_address, "Change EFIS mode to $efis_mode_next from $efis_mode_prev") {
+                dref_listener.sendDREF(xplane_address!!, "1-sim/ndpanel/1/hsiModeRotary", efis_mode_state.toFloat())
+                var rewrite = efis_mode_next
+                if (rewrite == 3)
+                    rewrite = 4
+                dref_listener.sendDREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_submode[0]", rewrite.toFloat())
+            }
+        }
+
         button_to_cmnd(map_zoom_out, "sim/instruments/map_zoom_out")
         button_to_cmnd(map_zoom_in, "sim/instruments/map_zoom_in")
         button_to_cmnd(efis_button_tfc, "laminar/B738/EFIS_control/capt/push_button/tfc_press")
@@ -379,6 +394,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_weather[0]", 2) // WXR
             // No need for this since EFIS_shows_weather[0] seems to pass this on
             // dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiWxr", 2) // WXR
+            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiModeRotary", 2)
         }
     }
 
@@ -393,7 +409,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             // Log.d(Const.TAG, "Ignoring unchanged value for $name with value $value")
             return false
         } else {
-            Log.d(Const.TAG, "Existing for $name is $prev with new $value")
+            Log.d(Const.TAG, "Existing $name changing to $value from $prev")
         }
         mapRREF.put(name, value)
 
@@ -409,7 +425,25 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
                 mode = "PLN"
             else
                 mode = "N/A"
-            efis_mode_dn.text = "EFIS " + mode
+            efis_mode_change.text = "EFIS " + mode
+            efis_mode_state = value.toInt()
+            if (efis_mode_state == 4)
+                efis_mode_state = 3
+            indicator = true
+        } else if (name == "1-sim/ndpanel/1/hsiModeRotary") {
+            val mode: String
+            if (value.toInt() == 0)
+                mode = "VOR"
+            else if (value.toInt() == 1)
+                mode = "APP"
+            else if (value.toInt() == 2)
+                mode = "MAP"
+            else if (value.toInt() == 3)
+                mode = "PLN"
+            else
+                mode = "N/A"
+            efis_mode_state = value.toInt()
+            efis_mode_change.text = "EFIS " + mode
             indicator = true
         } else if (name == "sim/cockpit/switches/EFIS_map_range_selector[0]") {
             val range = (1 shl value.toInt()) * 10

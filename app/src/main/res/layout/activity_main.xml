@@ -348,7 +348,7 @@
             android:orientation="horizontal">
 
             <Button
-                android:id="@+id/efis_mode_dn"
+                android:id="@+id/efis_mode_change"
                 style="@android:style/Widget.Button.Small"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
