@@ -390,7 +390,7 @@
                 android:layout_weight="1"
                 android:text="TFC" />
 
-            <Button
+            <net.waynepiekarski.xplanemonitor.XButton
                 android:id="@+id/efis_button_wxr"
                 style="@android:style/Widget.Button.Small"
                 android:layout_width="wrap_content"

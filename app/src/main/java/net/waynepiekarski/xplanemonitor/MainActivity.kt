@@ -156,20 +156,20 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             updateDebugUI()
         }
 
-        fun button_to_cmnd(button: Button, cmnd: String, cmnd2: String? = null) {
+        fun button_to_cmnd(button: Button, cmnd: String) {
             button.setOnClickListener {
                 check_thread(xplane_address, "Button for command $cmnd") {
                     dref_listener.sendCMND(xplane_address!!, cmnd)
-                    if (cmnd2 != null)
-                        dref_listener.sendCMND(xplane_address!!, cmnd2)
                 }
             }
         }
 
-        fun button_to_dref(button: Button, name: String) {
+        fun button_to_actions(button: XButton, cmnd: String, dref: String) {
             button.setOnClickListener {
-                check_thread(xplane_address, "Button for dref $name") {
-                    dref_listener.sendDREF(xplane_address!!, name, 1.0f)
+                val value = button.getInverseState()
+                check_thread(xplane_address, "Button for CMND $cmnd, and DREF $dref to $value") {
+                    dref_listener.sendCMND(xplane_address!!, cmnd)
+                    dref_listener.sendDREF(xplane_address!!, dref, value)
                 }
             }
         }
@@ -178,12 +178,10 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         button_to_cmnd(map_zoom_out, "sim/instruments/map_zoom_out")
         button_to_cmnd(map_zoom_in, "sim/instruments/map_zoom_in")
         button_to_cmnd(efis_button_tfc, "laminar/B738/EFIS_control/capt/push_button/tfc_press")
-        button_to_cmnd(efis_button_wxr, "laminar/B738/EFIS_control/capt/push_button/wxr_press")
+        button_to_actions(efis_button_wxr, "laminar/B738/EFIS_control/capt/push_button/wxr_press", "1-sim/ndpanel/1/hsiWxr")
         button_to_cmnd(efis_button_sta, "laminar/B738/EFIS_control/capt/push_button/sta_press")
         button_to_cmnd(efis_button_wpt, "laminar/B738/EFIS_control/capt/push_button/wpt_press")
-        // TEST OUT LNAV BUTTON, IF THIS DOESN'T WORK THEN TRY SENDING A DATAREF INSTEAD
-        button_to_cmnd(efis_button_arpt, "laminar/B738/EFIS_control/capt/push_button/arpt_press", "1-sim/AP/lnavButton") //"1-sim/ndpanel/1/hsiWxr") //"1-sim/ndpanel/2/map3")
-        // button_to_dref(efis_button_arpt, "1-sim/AP/lnavButton")
+        button_to_cmnd(efis_button_arpt, "laminar/B738/EFIS_control/capt/push_button/arpt_press")
         button_to_cmnd(efis_button_data, "laminar/B738/EFIS_control/capt/push_button/data_press")
         button_to_cmnd(efis_button_pos, "laminar/B738/EFIS_control/capt/push_button/pos_press")
         button_to_cmnd(efis_button_terr, "laminar/B738/EFIS_control/capt/push_button/terr_press")
@@ -367,6 +365,8 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_waypoints[0]", 2)
             dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_VORs[0]", 2)
             dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_weather[0]", 2)
+            // No need for this since EFIS_shows_weather[0] seems to pass this on
+            // dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiWxr", 2)
         }
     }
 
@@ -402,8 +402,9 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         } else if (name == "sim/cockpit/switches/EFIS_shows_VORs[0]") {
             efis_button_sta.text = "STA" + value.toInt()
             indicator = true
-        } else if (name == "sim/cockpit/switches/EFIS_shows_weather[0]") {
-            efis_button_wxr.text = "WXR" + value.toInt()
+        } else if (name == "sim/cockpit/switches/EFIS_shows_weather[0]" || name == "1-sim/ndpanel/1/hsiWxr") {
+            efis_button_wxr.text = "WXR"
+            efis_button_wxr.setState(value)
             indicator = true
         } else {
             Log.e(Const.TAG, "Unhandled RREF name=$name, value=$value")
