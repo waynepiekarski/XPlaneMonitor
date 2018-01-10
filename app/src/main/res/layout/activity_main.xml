@@ -373,7 +373,7 @@
                 android:layout_weight="1"
                 android:text="Map Range" />
 
-            <Button
+            <net.waynepiekarski.xplanemonitor.XButton
                 android:id="@+id/map_zoom_out"
                 style="@android:style/Widget.Button.Small"
                 android:layout_width="wrap_content"
@@ -382,7 +382,7 @@
                 android:layout_weight="1"
                 android:text="Z-" />
 
-            <Button
+            <net.waynepiekarski.xplanemonitor.XButton
                 android:id="@+id/efis_button_tfc"
                 style="@android:style/Widget.Button.Small"
                 android:layout_width="wrap_content"
@@ -398,7 +398,7 @@
                 android:layout_weight="1"
                 android:text="WXR" />
 
-            <Button
+            <net.waynepiekarski.xplanemonitor.XButton
                 android:id="@+id/efis_button_sta"
                 style="@android:style/Widget.Button.Small"
                 android:layout_width="wrap_content"
@@ -406,7 +406,7 @@
                 android:layout_weight="1"
                 android:text="STA" />
 
-            <Button
+            <net.waynepiekarski.xplanemonitor.XButton
                 android:id="@+id/efis_button_wpt"
                 style="@android:style/Widget.Button.Small"
                 android:layout_width="wrap_content"
@@ -414,7 +414,7 @@
                 android:layout_weight="1"
                 android:text="WPT" />
 
-            <Button
+            <net.waynepiekarski.xplanemonitor.XButton
                 android:id="@+id/efis_button_arpt"
                 style="@android:style/Widget.Button.Small"
                 android:layout_width="wrap_content"
@@ -422,7 +422,7 @@
                 android:layout_weight="1"
                 android:text="ARPT" />
 
-            <Button
+            <net.waynepiekarski.xplanemonitor.XButton
                 android:id="@+id/efis_button_data"
                 style="@android:style/Widget.Button.Small"
                 android:layout_width="wrap_content"
@@ -430,7 +430,7 @@
                 android:layout_weight="1"
                 android:text="DATA" />
 
-            <Button
+            <net.waynepiekarski.xplanemonitor.XButton
                 android:id="@+id/efis_button_pos"
                 style="@android:style/Widget.Button.Small"
                 android:layout_width="wrap_content"
@@ -438,7 +438,7 @@
                 android:layout_weight="1"
                 android:text="POS" />
 
-            <Button
+            <net.waynepiekarski.xplanemonitor.XButton
                 android:id="@+id/efis_button_terr"
                 style="@android:style/Widget.Button.Small"
                 android:layout_width="wrap_content"

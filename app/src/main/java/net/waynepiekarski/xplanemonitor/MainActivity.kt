@@ -57,6 +57,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
     internal lateinit var dref_listener: UDPReceiver
     internal lateinit var becn_listener: MulticastReceiver
     internal var mapDREF = TreeMap<String, Float>()
+    internal var mapRREF = TreeMap<String, Float>()
     internal var mapDATA = TreeMap<String, String>()
     internal var sequence = 0
     internal var fourDecimal = DecimalFormat("0.0000")
@@ -98,6 +99,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         resetButton.setOnClickListener {
             Log.d(Const.TAG, "Resetting internal map")
             mapDREF.clear()
+            mapRREF.clear()
             mapDATA.clear()
             updateDebugUI()
             resetIndicators()
@@ -174,6 +176,15 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             }
         }
 
+        fun button_to_dref(button: XButton, dref: String, value: Float) {
+            button.setOnClickListener {
+                check_thread(xplane_address, "Button for DREF $dref to $value") {
+                    dref_listener.sendDREF(xplane_address!!, dref, value)
+                }
+            }
+        }
+
+
         button_to_cmnd(efis_mode_dn, "sim/instruments/EFIS_mode_dn")
         button_to_cmnd(map_zoom_out, "sim/instruments/map_zoom_out")
         button_to_cmnd(map_zoom_in, "sim/instruments/map_zoom_in")
@@ -181,7 +192,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         button_to_actions(efis_button_wxr, "laminar/B738/EFIS_control/capt/push_button/wxr_press", "1-sim/ndpanel/1/hsiWxr")
         button_to_cmnd(efis_button_sta, "laminar/B738/EFIS_control/capt/push_button/sta_press")
         button_to_cmnd(efis_button_wpt, "laminar/B738/EFIS_control/capt/push_button/wpt_press")
-        button_to_cmnd(efis_button_arpt, "laminar/B738/EFIS_control/capt/push_button/arpt_press")
+        button_to_actions(efis_button_arpt, "laminar/B738/EFIS_control/capt/push_button/arpt_press", "1-sim/ndpanel/1/map3")
         button_to_cmnd(efis_button_data, "laminar/B738/EFIS_control/capt/push_button/data_press")
         button_to_cmnd(efis_button_pos, "laminar/B738/EFIS_control/capt/push_button/pos_press")
         button_to_cmnd(efis_button_terr, "laminar/B738/EFIS_control/capt/push_button/terr_press")
@@ -361,17 +372,31 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_submode[0]", 2)
             dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_range_selector[0]", 2)
             dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_tcas[0]", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_airports[0]", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_airports[0]", 2) // ARPT
+            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/map3", 2)                        // ARPT
             dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_waypoints[0]", 2)
             dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_VORs[0]", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_weather[0]", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_weather[0]", 2) // WXR
             // No need for this since EFIS_shows_weather[0] seems to pass this on
-            // dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiWxr", 2)
+            // dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiWxr", 2) // WXR
         }
     }
 
     private fun processRREF(name: String, value: Float): Boolean {
         val indicator: Boolean
+
+        val prev: Float? = mapRREF.get(name)
+        if ((prev != null) and (prev == value)) {
+            // Value has been seen before and is not a change, so ignore it to save time.
+            // This is also handy when different aircraft work with different names and we can ignore unchanging values.
+            // TODO: There is a possibility we could have stale values here when switching planes?
+            // Log.d(Const.TAG, "Ignoring unchanged value for $name with value $value")
+            return false
+        } else {
+            Log.d(Const.TAG, "Existing for $name is $prev with new $value")
+        }
+        mapRREF.put(name, value)
+
         if (name == "sim/cockpit/switches/EFIS_map_submode[0]") {
             val mode: String
             if (value.toInt() == 0)
@@ -393,8 +418,9 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         } else if (name == "sim/cockpit/switches/EFIS_shows_tcas[0]") {
             efis_button_tfc.text = "TFC" + value.toInt()
             indicator = true
-        } else if (name == "sim/cockpit/switches/EFIS_shows_airports[0]") {
-            efis_button_arpt.text = "ARPT" + value.toInt()
+        } else if (name == "sim/cockpit/switches/EFIS_shows_airports[0]" || name == "1-sim/ndpanel/1/map3") {
+            efis_button_arpt.text = "ARPT"
+            efis_button_arpt.setState(value)
             indicator = true
         } else if (name == "sim/cockpit/switches/EFIS_shows_waypoints[0]") {
             efis_button_wpt.text = "WPT" + value.toInt()
@@ -646,6 +672,11 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         for ((key, value) in mapDREF) {
             // Log.d(Const.TAG, "Key=" + entry.getKey() + " Value=" + entry.getValue());
             out = out + "\n" + key + " = " + getCompactFloat(value)
+        }
+        out = out + "\n"
+        for ((key, value) in mapRREF) {
+            // Log.d(Const.TAG, "Key=" + entry.getKey() + " Value=" + entry.getValue());
+            out = out + "\n" + "RREF: " + key + " = " + getCompactFloat(value)
         }
         out = out + "\n"
         for ((key, value) in mapDATA) {
