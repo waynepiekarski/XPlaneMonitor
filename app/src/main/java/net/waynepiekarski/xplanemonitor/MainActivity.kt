@@ -304,6 +304,8 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
     }
 
     fun setItemMap(latitude: Float, longitude: Float, heading: Float) {
+        if (layoutMap.visibility != View.VISIBLE)
+            return
         if (!::googleMap.isInitialized)
             return
         mapCoordinates.text = ("LatLong: "
