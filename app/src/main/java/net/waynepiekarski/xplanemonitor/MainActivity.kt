@@ -223,14 +223,16 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             efis_range_change(-1)
         }
 
-        button_to_cmnd(efis_button_tfc, "laminar/B738/EFIS_control/capt/push_button/tfc_press")
+        button_to_actions(efis_button_tfc, "laminar/B738/EFIS_control/capt/push_button/tfc_press", "1-sim/ndpanel/1/hsiRangeButton")
         button_to_actions(efis_button_wxr, "laminar/B738/EFIS_control/capt/push_button/wxr_press", "1-sim/ndpanel/1/hsiWxr")
-        button_to_cmnd(efis_button_sta, "laminar/B738/EFIS_control/capt/push_button/sta_press")
-        button_to_cmnd(efis_button_wpt, "laminar/B738/EFIS_control/capt/push_button/wpt_press")
+        button_to_actions(efis_button_sta, "laminar/B738/EFIS_control/capt/push_button/sta_press", "1-sim/ndpanel/1/map2")
+        button_to_actions(efis_button_wpt, "laminar/B738/EFIS_control/capt/push_button/wpt_press", "1-sim/ndpanel/1/map5")
         button_to_actions(efis_button_arpt, "laminar/B738/EFIS_control/capt/push_button/arpt_press", "1-sim/ndpanel/1/map3")
-        button_to_cmnd(efis_button_data, "laminar/B738/EFIS_control/capt/push_button/data_press")
+        button_to_actions(efis_button_data, "laminar/B738/EFIS_control/capt/push_button/data_press", "1-sim/ndpanel/1/map4")
         button_to_cmnd(efis_button_pos, "laminar/B738/EFIS_control/capt/push_button/pos_press")
-        button_to_cmnd(efis_button_terr, "laminar/B738/EFIS_control/capt/push_button/terr_press")
+        button_to_actions(efis_button_terr, "laminar/B738/EFIS_control/capt/push_button/terr_press", "1-sim/ndpanel/1/hsiTerr")
+        // TODO: There does not appear to be a CTR button or dataref in the XP737
+        button_to_actions(efis_button_ctr, "laminar/B738/EFIS_control/capt/push_button/ctr_press_TODO", "1-sim/ndpanel/1/hsiModeButton")
 
         all_lights_on.setOnClickListener {
             check_thread(xplane_address, "Set all lights on") {
@@ -416,6 +418,13 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             // dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiWxr", 2) // WXR
             dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiModeRotary", 2)
             dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiRangeRotary", 2)
+            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/map4", 2)                        // DATA
+            // dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_data[0]", 2)              // DATA, does not exist in XP737?
+            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/map5", 2)                        // WPT
+            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/map2", 2)                        // STA, maps to NAVAID
+            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiTerr", 2)                     // TERR, no equivalent in XP737?
+            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiRangeButton", 2)              // TFC
+            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiModeButton", 2)               // CTR
         }
     }
 
@@ -471,21 +480,31 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             map_zoom_range.text = "" + range + "nm"
             efis_range_state = value.toInt()
             indicator = true
-        } else if (name == "sim/cockpit/switches/EFIS_shows_tcas[0]") {
-            efis_button_tfc.text = "TFC" + value.toInt()
+        } else if (name == "sim/cockpit/switches/EFIS_shows_tcas[0]" || name == "1-sim/ndpanel/1/hsiRangeButton") {
+            efis_button_tfc.setState(value)
+            indicator = true
+        } else if (name == "sim/cockpit/switches/EFIS_shows_ctr_TODO[0]" || name == "1-sim/ndpanel/1/hsiModeButton") {
+            // hsiModeButton seems to either never change, or always go 0->1->0 very quickly, so perhaps it can never be set in FF767
+            efis_button_ctr.setState(value)
             indicator = true
         } else if (name == "sim/cockpit/switches/EFIS_shows_airports[0]" || name == "1-sim/ndpanel/1/map3") {
-            efis_button_arpt.text = "ARPT"
             efis_button_arpt.setState(value)
             indicator = true
-        } else if (name == "sim/cockpit/switches/EFIS_shows_waypoints[0]") {
-            efis_button_wpt.text = "WPT" + value.toInt()
+        } else if (name == "sim/cockpit/switches/EFIS_shows_waypoints[0]" || name == "1-sim/ndpanel/1/map5") {
+            efis_button_wpt.setState(value)
             indicator = true
-        } else if (name == "sim/cockpit/switches/EFIS_shows_VORs[0]") {
-            efis_button_sta.text = "STA" + value.toInt()
+        } else if (name == "sim/cockpit/switches/EFIS_shows_VORs[0]" || name == "1-sim/ndpanel/1/map2") {
+            efis_button_sta.setState(value)
+            indicator = true
+        } else if (name == "sim/cockpit/switches/EFIS_shows_data[0]" || name == "1-sim/ndpanel/1/map4") {
+            // TODO: Note that sim/cockpit/switches/EFIS_shows_data[0] does not seem to exist in XP737, except it should
+            efis_button_data.setState(value)
             indicator = true
         } else if (name == "sim/cockpit/switches/EFIS_shows_weather[0]" || name == "1-sim/ndpanel/1/hsiWxr") {
-            efis_button_wxr.text = "WXR"
+            efis_button_wxr.setState(value)
+            indicator = true
+        } else if (name == "sim/cockpit/switches/EFIS_shows_terrain[0]" || name == "1-sim/ndpanel/1/hsiTerr") {
+            // TODO: Note that sim/cockpit/switches/EFIS_shows_terrain[0] does not seem to exist in XP737, except it should
             efis_button_wxr.setState(value)
             indicator = true
         } else {

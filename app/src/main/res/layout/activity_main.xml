@@ -391,6 +391,14 @@
                 android:text="TFC" />
 
             <net.waynepiekarski.xplanemonitor.XButton
+                android:id="@+id/efis_button_ctr"
+                style="@android:style/Widget.Button.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="CTR" />
+
+            <net.waynepiekarski.xplanemonitor.XButton
                 android:id="@+id/efis_button_wxr"
                 style="@android:style/Widget.Button.Small"
                 android:layout_width="wrap_content"
