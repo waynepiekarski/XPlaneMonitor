@@ -291,6 +291,19 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         }
     }
 
+    fun mirror_xhsi_value(name: String, src: String, dest: String, value: Float) {
+        if (name != src) {
+            // Do not mirror the value if the name and value do not match the src
+            // Don't send back 737 values because XHSI already understands those
+            return
+        }
+        thread(start = true) {
+            Log.d(Const.TAG, "XHSI: Started thread/send for mirroring from [$src] to [$dest] value $value")
+            dref_listener.sendDREF(xplane_address!!, dest, value)
+        }
+
+    }
+
     override fun onResume() {
         super.onResume()
         mapView.onResume()
@@ -461,6 +474,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
                 efis_mode_state = 3
             indicator = true
         } else if (name == "1-sim/ndpanel/1/hsiModeRotary") {
+            mirror_xhsi_value(name, "1-sim/ndpanel/1/hsiModeRotary", "sim/cockpit/switches/EFIS_map_submode[0]", if (value.toInt() == 3) 4.0f else value)
             val mode: String
             if (value.toInt() == 0)
                 mode = "VOR"
@@ -476,35 +490,44 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             efis_mode_change.text = "EFIS " + mode
             indicator = true
         } else if (name == "sim/cockpit/switches/EFIS_map_range_selector[0]" || name == "1-sim/ndpanel/1/hsiRangeRotary") {
+            mirror_xhsi_value(name, "1-sim/ndpanel/1/hsiRangeRotary", "sim/cockpit/switches/EFIS_map_range_selector[0]", value)
             val range = (1 shl value.toInt()) * 10
             map_zoom_range.text = "" + range + "nm"
             efis_range_state = value.toInt()
             indicator = true
         } else if (name == "sim/cockpit/switches/EFIS_shows_tcas[0]" || name == "1-sim/ndpanel/1/hsiRangeButton") {
+            mirror_xhsi_value(name, "1-sim/ndpanel/1/hsiRangeButton", "sim/cockpit/switches/EFIS_shows_tcas[0]", value)
             efis_button_tfc.setState(value)
             indicator = true
         } else if (name == "sim/cockpit/switches/EFIS_shows_ctr_TODO[0]" || name == "1-sim/ndpanel/1/hsiModeButton") {
             // hsiModeButton seems to either never change, or always go 0->1->0 very quickly, so perhaps it can never be set in FF767
+            mirror_xhsi_value(name, "1-sim/ndpanel/1/hsiModeButton", "sim/cockpit/switches/EFIS_shows_ctr_TODO[0]", value)
             efis_button_ctr.setState(value)
             indicator = true
         } else if (name == "sim/cockpit/switches/EFIS_shows_airports[0]" || name == "1-sim/ndpanel/1/map3") {
+            mirror_xhsi_value(name, "1-sim/ndpanel/1/map3", "sim/cockpit/switches/EFIS_shows_airports[0]", value)
             efis_button_arpt.setState(value)
             indicator = true
         } else if (name == "sim/cockpit/switches/EFIS_shows_waypoints[0]" || name == "1-sim/ndpanel/1/map5") {
+            mirror_xhsi_value(name, "1-sim/ndpanel/1/map5", "sim/cockpit/switches/EFIS_shows_waypoints[0]", value)
             efis_button_wpt.setState(value)
             indicator = true
         } else if (name == "sim/cockpit/switches/EFIS_shows_VORs[0]" || name == "1-sim/ndpanel/1/map2") {
+            mirror_xhsi_value(name, "1-sim/ndpanel/1/map2", "sim/cockpit/switches/EFIS_shows_VORs[0]", value)
             efis_button_sta.setState(value)
             indicator = true
         } else if (name == "sim/cockpit/switches/EFIS_shows_data[0]" || name == "1-sim/ndpanel/1/map4") {
             // TODO: Note that sim/cockpit/switches/EFIS_shows_data[0] does not seem to exist in XP737, except it should
+            // TODO: mirror_xhsi_value()
             efis_button_data.setState(value)
             indicator = true
         } else if (name == "sim/cockpit/switches/EFIS_shows_weather[0]" || name == "1-sim/ndpanel/1/hsiWxr") {
+            mirror_xhsi_value(name, "1-sim/ndpanel/1/hsiWxr", "sim/cockpit/switches/EFIS_shows_weather[0]", value)
             efis_button_wxr.setState(value)
             indicator = true
         } else if (name == "sim/cockpit/switches/EFIS_shows_terrain[0]" || name == "1-sim/ndpanel/1/hsiTerr") {
             // TODO: Note that sim/cockpit/switches/EFIS_shows_terrain[0] does not seem to exist in XP737, except it should
+            // TODO: mirror_xhsi_value()
             efis_button_wxr.setState(value)
             indicator = true
         } else {
