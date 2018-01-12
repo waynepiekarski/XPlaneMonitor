@@ -328,8 +328,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerHorizontal="true"
-                android:layout_weight="1"
-                android:text="On" />
+                android:layout_weight="0"
+                android:text="Lights-On" />
 
             <Button
                 android:id="@+id/all_lights_off"
@@ -337,7 +337,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerHorizontal="true"
-                android:layout_weight="1"
+                android:layout_weight="0"
                 android:text="Off" />
 
         </LinearLayout>
@@ -353,6 +353,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:singleLine="true"
                 android:text="EFIS Mode" />
 
             <Button
@@ -370,7 +371,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerHorizontal="true"
-                android:layout_weight="1"
+                android:layout_weight="0"
+                android:singleLine="true"
                 android:text="Map Range" />
 
             <net.waynepiekarski.xplanemonitor.XButton
