@@ -83,6 +83,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
     internal var genericLightsValues = FloatArray(10)
 
     internal var efis_mode_state = 0
+    internal var efis_range_state = 0
 
 
     override fun onConfigurationChanged(config: Configuration) {
@@ -187,7 +188,6 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             }
         }
 
-
         efis_mode_change.setOnClickListener {
             val efis_mode_prev = efis_mode_state
             val efis_mode_next = if(efis_mode_state >= 3) 0 else efis_mode_state+1
@@ -201,8 +201,28 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             }
         }
 
-        button_to_cmnd(map_zoom_out, "sim/instruments/map_zoom_out")
-        button_to_cmnd(map_zoom_in, "sim/instruments/map_zoom_in")
+        fun efis_range_change(dir: Int) {
+            val efis_range_prev = efis_range_state
+            var efis_range_next = efis_range_state+dir
+            if (efis_range_next >= 5)
+                efis_range_next = 5
+            else if (efis_range_next < 0)
+                efis_range_next = 0
+            efis_range_state = efis_range_next
+            check_thread(xplane_address, "Change EFIS range with direction $dir to $efis_range_next from $efis_range_prev") {
+                dref_listener.sendDREF(xplane_address!!, "1-sim/ndpanel/1/hsiRangeRotary", efis_range_state.toFloat())
+                dref_listener.sendDREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_range_selector[0]", efis_range_state.toFloat())
+            }
+        }
+
+        map_zoom_out.setOnClickListener {
+            efis_range_change(1)
+        }
+
+        map_zoom_in.setOnClickListener {
+            efis_range_change(-1)
+        }
+
         button_to_cmnd(efis_button_tfc, "laminar/B738/EFIS_control/capt/push_button/tfc_press")
         button_to_actions(efis_button_wxr, "laminar/B738/EFIS_control/capt/push_button/wxr_press", "1-sim/ndpanel/1/hsiWxr")
         button_to_cmnd(efis_button_sta, "laminar/B738/EFIS_control/capt/push_button/sta_press")
@@ -395,6 +415,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             // No need for this since EFIS_shows_weather[0] seems to pass this on
             // dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiWxr", 2) // WXR
             dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiModeRotary", 2)
+            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiRangeRotary", 2)
         }
     }
 
@@ -445,9 +466,10 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             efis_mode_state = value.toInt()
             efis_mode_change.text = "EFIS " + mode
             indicator = true
-        } else if (name == "sim/cockpit/switches/EFIS_map_range_selector[0]") {
+        } else if (name == "sim/cockpit/switches/EFIS_map_range_selector[0]" || name == "1-sim/ndpanel/1/hsiRangeRotary") {
             val range = (1 shl value.toInt()) * 10
             map_zoom_range.text = "" + range + "nm"
+            efis_range_state = value.toInt()
             indicator = true
         } else if (name == "sim/cockpit/switches/EFIS_shows_tcas[0]") {
             efis_button_tfc.text = "TFC" + value.toInt()
