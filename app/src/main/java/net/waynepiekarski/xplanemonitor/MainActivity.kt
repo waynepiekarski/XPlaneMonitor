@@ -63,8 +63,8 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
     internal var fourDecimal = DecimalFormat("0.0000")
     internal var oneDecimal = DecimalFormat("0.0")
     internal var zeroDecimal = DecimalFormat("#")
-    internal var lastFlapsDesired = ""
-    internal var lastFlapsActual = ""
+    internal var lastFlapsDesired = "0"
+    internal var lastFlapsActual = "0"
     internal lateinit var googleMap: GoogleMap
     internal lateinit var googleMapMarker: Marker
     internal lateinit var googleMapLine: Marker
@@ -438,25 +438,138 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiTerr", 2)                     // TERR, no equivalent in XP737?
             dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiRangeButton", 2)              // TFC
             dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiModeButton", 2)               // CTR
+
+            dref_listener.sendRREF(xplane_address!!, "sim/operation/misc/frame_rate_period[0]", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/cockpit2/controls/left_brake_ratio[0]", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/cockpit2/controls/right_brake_ratio[0]", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/cockpit2/controls/parking_brake_ratio[0]", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/cockpit2/controls/speedbrake_ratio[0]", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/warnings/annunciators/reverse[0]", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/flightmodel/position/indicated_airspeed[0]", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/flightmodel/position/y_agl[0]", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/flightmodel/position/elevation[0]", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/cockpit2/gauges/indicators/altitude_ft_pilot[0]", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/cockpit2/controls/flap_handle_deploy_ratio[0]", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/flightmodel/controls/flaprqst[0]", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/flightmodel2/gear/tire_vertical_force_n_mtr[0]", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/flightmodel/forces/g_nrml[0]", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/radios/nav1_dme_dist_m[0]", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/radios/nav2_dme_dist_m[0]", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/flightmodel/position/vh_ind_fpm", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/flightmodel/position/latitude", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/flightmodel/position/longitude", 2)
+            dref_listener.sendRREF(xplane_address!!, "sim/graphics/view/view_heading", 2)
+            for (i in 0 until landingLightsText.size)
+                dref_listener.sendRREF(xplane_address!!, "sim/cockpit2/switches/landing_lights_switch[$i]", 2)
+            for (i in 0 until genericLightsText.size)
+                dref_listener.sendRREF(xplane_address!!, "sim/cockpit2/switches/generic_lights_switch[$i]", 2)
         }
     }
 
-    private fun processRREF(name: String, value: Float): Boolean {
-        val indicator: Boolean
-
+    private fun processRREF(name: String, value: Float) {
         val prev: Float? = mapRREF.get(name)
         if ((prev != null) and (prev == value)) {
             // Value has been seen before and is not a change, so ignore it to save time.
             // This is also handy when different aircraft work with different names and we can ignore unchanging values.
             // TODO: There is a possibility we could have stale values here when switching planes?
             // Log.d(Const.TAG, "Ignoring unchanged value for $name with value $value")
-            return false
+            return
         } else {
-            Log.d(Const.TAG, "Existing $name changing to $value from $prev")
+            // Log.d(Const.TAG, "Existing $name changing to $value from $prev")
         }
         mapRREF.put(name, value)
 
-        if (name == "sim/cockpit/switches/EFIS_map_submode[0]") {
+        if (name == "sim/operation/misc/frame_rate_period[0]") {
+            if (value < 0.0001) {
+                itemFPS.text = "FPS\nn/a"
+                itemFPS.setBackgroundColor(Color.GRAY)
+            } else {
+                itemFPS.text = "FPS\n" + oneDecimal.format((1.0f / value).toDouble())
+                itemFPS.setBackgroundColor(Color.GREEN)
+            }
+        } else if (name == "sim/cockpit2/controls/left_brake_ratio[0]") {
+            setBrakePercent(itemLeftBrake, "Left Brake", value)
+        } else if (name == "sim/cockpit2/controls/right_brake_ratio[0]") {
+            setBrakePercent(itemRightBrake, "Right Brake", value)
+        } else if (name == "sim/cockpit2/controls/parking_brake_ratio[0]") {
+            setBrakePercent(itemParkingBrake, "Parking Brake", value)
+        } else if (name == "sim/cockpit2/controls/speedbrake_ratio[0]") {
+            setBrakePercent(itemSpeedBrake, "Speed Brake (Air)", value)
+        } else if (name == "sim/cockpit/warnings/annunciators/reverse[0]") {
+            val bits = value.toInt()
+            var engines = ""
+            if (bits and 1 == 1) engines += "1"
+            if (bits and 2 == 2) engines += "2"
+            if (bits and 4 == 4) engines += "3"
+            if (bits and 8 == 8) engines += "4"
+            setItemString(itemReverseThrust, "Thrust Direction", if (bits != 0) "REVERSE " + engines else "All Forward", bits != 0)
+        } else if (name == "sim/flightmodel/position/indicated_airspeed[0]") {
+            setItemString(itemIndicatedSpeed, "Indicated Air Speed", oneDecimal.format(value.toDouble()) + "kts", false)
+            globalAirspeed = value
+            setGlideEstimate(globalNav1Distance, globalAirspeed, globalAltitude)
+        } else if (name == "sim/flightmodel/position/y_agl[0]") {
+            setItemString(itemAltitudeGround, "Altitude AGL", oneDecimal.format((value * Const.METERS_TO_FEET).toDouble()) + "ft", false)
+        } else if (name == "sim/flightmodel/position/elevation[0]") {
+            setItemString(itemAltitudeMSL, "Altitude MSL", oneDecimal.format((value * Const.METERS_TO_FEET).toDouble()) + "ft", false)
+            globalAltitude = value * Const.METERS_TO_FEET
+            setGlideEstimate(globalNav1Distance, globalAirspeed, globalAltitude)
+        } else if (name == "sim/cockpit2/gauges/indicators/altitude_ft_pilot[0]") {
+            setItemString(itemAltitudeGauge, "Altitude Gauge", oneDecimal.format(value.toDouble()) + "ft", false)
+        } else if (name == "sim/cockpit2/controls/flap_handle_deploy_ratio[0]") {
+            lastFlapsActual = zeroDecimal.format((40 * value).toDouble())
+            setItemString(itemFlapsActual, "Flaps Actual", lastFlapsActual, lastFlapsActual != lastFlapsDesired)
+        } else if (name == "sim/flightmodel/controls/flaprqst[0]") {
+            lastFlapsDesired = zeroDecimal.format((40 * value).toDouble())
+            setItemString(itemFlapsDesired, "Flaps Desired", lastFlapsDesired, value > 0.01)
+        } else if (name == "sim/flightmodel2/gear/tire_vertical_force_n_mtr[0]") {
+            setItemString(itemForceGear, "Gear Force", oneDecimal.format(value.toDouble()) + "Nm", false)
+        } else if (name == "sim/flightmodel/forces/g_nrml[0]") {
+            setItemString(itemForceVertical, "Vert Force", oneDecimal.format(value.toDouble()) + "G", value < 0.75 || value > 1.25)
+            graphForceVertical.set1Value(value - 1.0) // Center around 1G
+            barForceVertical.setValue(value - 1.0)
+        } else if (name == "sim/cockpit/radios/nav1_dme_dist_m[0]") {
+            setItemString(itemDME1Distance, "NAV1 DME", oneDecimal.format(value.toDouble()) + "Nm", false)
+            globalNav1Distance = value
+            setGlideEstimate(globalNav1Distance, globalAirspeed, globalAltitude)
+        } else if (name == "sim/cockpit/radios/nav2_dme_dist_m[0]") {
+            setItemString(itemDME2Distance, "NAV2 DME", oneDecimal.format(value.toDouble()) + "Nm", false)
+        } else if (name == "sim/flightmodel/position/vh_ind_fpm") {
+            setItemString(itemActualFPM, "Actual FPM", oneDecimal.format(value.toDouble()) + "fpm", value < -3000 || value > 3000)
+        } else if (name == "sim/flightmodel/position/latitude") {
+            globalLatitude = value
+            setItemMap(globalLatitude, globalLongitude, globalHeading)
+        } else if (name == "sim/flightmodel/position/longitude") {
+            globalLongitude = value
+            setItemMap(globalLatitude, globalLongitude, globalHeading)
+        } else if (name == "sim/graphics/view/view_heading") {
+            setItemString(itemHeading, "True Heading", oneDecimal.format(value.toDouble()) + "deg", false)
+            globalHeading = value
+            setItemMap(globalLatitude, globalLongitude, globalHeading)
+        } else if (name.startsWith("sim/cockpit2/switches/generic_lights_switch[")) {
+            // Extract out the number between [ ]
+            var s = name.substring(name.indexOf("[") + 1)
+            s = s.substring(0, s.indexOf("]"))
+            val n = s.toInt()
+            val t = genericLightsText[n]
+            t!!.setText("G$n")
+            if (value.toInt() > 0)
+                t.setBackgroundColor(Color.LTGRAY)
+            else
+                t.setBackgroundColor(Color.GRAY)
+            genericLightsValues[n] = value
+        } else if (name.startsWith("sim/cockpit2/switches/landing_lights_switch[")) {
+            // Extract out the number between [ ]
+            var s = name.substring(name.indexOf("[") + 1)
+            s = s.substring(0, s.indexOf("]"))
+            val n = s.toInt()
+            val t = landingLightsText[n]
+            t!!.setText("L$n")
+            if (value.toInt() > 0)
+                t.setBackgroundColor(Color.LTGRAY)
+            else
+                t.setBackgroundColor(Color.GRAY)
+            landingLightsValues[n] = value
+        } else if (name == "sim/cockpit/switches/EFIS_map_submode[0]") {
             val mode: String
             if (value.toInt() == 0)
                 mode = "APP"
@@ -472,7 +585,6 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             efis_mode_state = value.toInt()
             if (efis_mode_state == 4)
                 efis_mode_state = 3
-            indicator = true
         } else if (name == "1-sim/ndpanel/1/hsiModeRotary") {
             mirror_xhsi_value(name, "1-sim/ndpanel/1/hsiModeRotary", "sim/cockpit/switches/EFIS_map_submode[0]", if (value.toInt() == 3) 4.0f else value)
             val mode: String
@@ -488,53 +600,41 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
                 mode = "N/A"
             efis_mode_state = value.toInt()
             efis_mode_change.text = "EFIS " + mode
-            indicator = true
         } else if (name == "sim/cockpit/switches/EFIS_map_range_selector[0]" || name == "1-sim/ndpanel/1/hsiRangeRotary") {
             mirror_xhsi_value(name, "1-sim/ndpanel/1/hsiRangeRotary", "sim/cockpit/switches/EFIS_map_range_selector[0]", value)
             val range = (1 shl value.toInt()) * 10
             map_zoom_range.text = "" + range + "nm"
             efis_range_state = value.toInt()
-            indicator = true
         } else if (name == "sim/cockpit/switches/EFIS_shows_tcas[0]" || name == "1-sim/ndpanel/1/hsiRangeButton") {
             mirror_xhsi_value(name, "1-sim/ndpanel/1/hsiRangeButton", "sim/cockpit/switches/EFIS_shows_tcas[0]", value)
             efis_button_tfc.setState(value)
-            indicator = true
         } else if (name == "sim/cockpit/switches/EFIS_shows_ctr_TODO[0]" || name == "1-sim/ndpanel/1/hsiModeButton") {
             // hsiModeButton seems to either never change, or always go 0->1->0 very quickly, so perhaps it can never be set in FF767
             mirror_xhsi_value(name, "1-sim/ndpanel/1/hsiModeButton", "sim/cockpit/switches/EFIS_shows_ctr_TODO[0]", value)
             efis_button_ctr.setState(value)
-            indicator = true
         } else if (name == "sim/cockpit/switches/EFIS_shows_airports[0]" || name == "1-sim/ndpanel/1/map3") {
             mirror_xhsi_value(name, "1-sim/ndpanel/1/map3", "sim/cockpit/switches/EFIS_shows_airports[0]", value)
             efis_button_arpt.setState(value)
-            indicator = true
         } else if (name == "sim/cockpit/switches/EFIS_shows_waypoints[0]" || name == "1-sim/ndpanel/1/map5") {
             mirror_xhsi_value(name, "1-sim/ndpanel/1/map5", "sim/cockpit/switches/EFIS_shows_waypoints[0]", value)
             efis_button_wpt.setState(value)
-            indicator = true
         } else if (name == "sim/cockpit/switches/EFIS_shows_VORs[0]" || name == "1-sim/ndpanel/1/map2") {
             mirror_xhsi_value(name, "1-sim/ndpanel/1/map2", "sim/cockpit/switches/EFIS_shows_VORs[0]", value)
             efis_button_sta.setState(value)
-            indicator = true
         } else if (name == "sim/cockpit/switches/EFIS_shows_data[0]" || name == "1-sim/ndpanel/1/map4") {
             // TODO: Note that sim/cockpit/switches/EFIS_shows_data[0] does not seem to exist in XP737, except it should
             // TODO: mirror_xhsi_value()
             efis_button_data.setState(value)
-            indicator = true
         } else if (name == "sim/cockpit/switches/EFIS_shows_weather[0]" || name == "1-sim/ndpanel/1/hsiWxr") {
             mirror_xhsi_value(name, "1-sim/ndpanel/1/hsiWxr", "sim/cockpit/switches/EFIS_shows_weather[0]", value)
             efis_button_wxr.setState(value)
-            indicator = true
         } else if (name == "sim/cockpit/switches/EFIS_shows_terrain[0]" || name == "1-sim/ndpanel/1/hsiTerr") {
             // TODO: Note that sim/cockpit/switches/EFIS_shows_terrain[0] does not seem to exist in XP737, except it should
             // TODO: mirror_xhsi_value()
             efis_button_wxr.setState(value)
-            indicator = true
         } else {
             Log.e(Const.TAG, "Unhandled RREF name=$name, value=$value")
-            indicator = false
         }
-        return indicator
     }
 
     override fun onReceiveUDP(buffer: ByteArray) {
@@ -557,124 +657,11 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             val name = String(buffer, +9, zero - 9)
             // Log.d(Const.TAG, "Parsed DREF+ with float=" + f + " for variable=" + name);
 
-            val indicator: Boolean
-            // Handle any of the indicators
-            if (name == "sim/operation/misc/frame_rate_period[0]") {
-                if (f < 0.0001) {
-                    itemFPS.text = "FPS\nn/a"
-                    itemFPS.setBackgroundColor(Color.GRAY)
-                } else {
-                    itemFPS.text = "FPS\n" + oneDecimal.format((1.0f / f).toDouble())
-                    itemFPS.setBackgroundColor(Color.GREEN)
-                }
-                indicator = true
-            } else if (name == "sim/cockpit2/controls/left_brake_ratio[0]") {
-                setBrakePercent(itemLeftBrake, "Left Brake", f)
-                indicator = true
-            } else if (name == "sim/cockpit2/controls/right_brake_ratio[0]") {
-                setBrakePercent(itemRightBrake, "Right Brake", f)
-                indicator = true
-            } else if (name == "sim/cockpit2/controls/parking_brake_ratio[0]") {
-                setBrakePercent(itemParkingBrake, "Parking Brake", f)
-                indicator = true
-            } else if (name == "sim/cockpit2/controls/speedbrake_ratio[0]") {
-                setBrakePercent(itemSpeedBrake, "Speed Brake (Air)", f)
-                indicator = true
-            } else if (name == "sim/cockpit/warnings/annunciators/reverse[0]") {
-                val bits = f.toInt()
-                var engines = ""
-                if (bits and 1 == 1) engines += "1"
-                if (bits and 2 == 2) engines += "2"
-                if (bits and 4 == 4) engines += "3"
-                if (bits and 8 == 8) engines += "4"
-                setItemString(itemReverseThrust, "Thrust Direction", if (bits != 0) "REVERSE " + engines else "All Forward", bits != 0)
-                indicator = true
-            } else if (name == "sim/flightmodel/position/indicated_airspeed[0]") {
-                setItemString(itemIndicatedSpeed, "Indicated Air Speed", oneDecimal.format(f.toDouble()) + "kts", false)
-                globalAirspeed = f
-                setGlideEstimate(globalNav1Distance, globalAirspeed, globalAltitude)
-                indicator = true
-            } else if (name == "sim/flightmodel/position/y_agl[0]") {
-                setItemString(itemAltitudeGround, "Altitude AGL", oneDecimal.format((f * Const.METERS_TO_FEET).toDouble()) + "ft", false)
-                indicator = true
-            } else if (name == "sim/flightmodel/position/elevation[0]") {
-                setItemString(itemAltitudeMSL, "Altitude MSL", oneDecimal.format((f * Const.METERS_TO_FEET).toDouble()) + "ft", false)
-                globalAltitude = f * Const.METERS_TO_FEET
-                setGlideEstimate(globalNav1Distance, globalAirspeed, globalAltitude)
-                indicator = true
-            } else if (name == "sim/cockpit2/gauges/indicators/altitude_ft_pilot[0]") {
-                setItemString(itemAltitudeGauge, "Altitude Gauge", oneDecimal.format(f.toDouble()) + "ft", false)
-                indicator = true
-            } else if (name == "sim/cockpit2/controls/flap_handle_deploy_ratio[0]") {
-                lastFlapsActual = zeroDecimal.format((40 * f).toDouble())
-                setItemString(itemFlapsActual, "Flaps Actual", lastFlapsActual, lastFlapsActual != lastFlapsDesired)
-                indicator = true
-            } else if (name == "sim/flightmodel/controls/flaprqst[0]") {
-                lastFlapsDesired = zeroDecimal.format((40 * f).toDouble())
-                setItemString(itemFlapsDesired, "Flaps Desired", lastFlapsDesired, f > 0.01)
-                indicator = true
-            } else if (name == "sim/flightmodel2/gear/tire_vertical_force_n_mtr[0]") {
-                setItemString(itemForceGear, "Gear Force", oneDecimal.format(f.toDouble()) + "Nm", false)
-                indicator = true
-            } else if (name == "sim/flightmodel/forces/g_nrml[0]") {
-                setItemString(itemForceVertical, "Vert Force", oneDecimal.format(f.toDouble()) + "G", f < 0.75 || f > 1.25)
-                graphForceVertical.set1Value(f - 1.0) // Center around 1G
-                barForceVertical.setValue(f - 1.0)
-                indicator = true
-            } else if (name == "sim/cockpit/radios/nav1_dme_dist_m[0]") {
-                setItemString(itemDME1Distance, "NAV1 DME", oneDecimal.format(f.toDouble()) + "Nm", false)
-                globalNav1Distance = f
-                setGlideEstimate(globalNav1Distance, globalAirspeed, globalAltitude)
-                indicator = true
-            } else if (name == "sim/cockpit/radios/nav2_dme_dist_m[0]") {
-                setItemString(itemDME2Distance, "NAV2 DME", oneDecimal.format(f.toDouble()) + "Nm", false)
-                indicator = true
-            } else if (name == "sim/flightmodel/position/vh_ind_fpm") {
-                setItemString(itemActualFPM, "Actual FPM", oneDecimal.format(f.toDouble()) + "fpm", f < -3000 || f > 3000)
-                indicator = true
-            } else if (name == "sim/flightmodel/position/latitude") {
-                indicator = true
-                globalLatitude = f
-                setItemMap(globalLatitude, globalLongitude, globalHeading)
-            } else if (name == "sim/flightmodel/position/longitude") {
-                indicator = true
-                globalLongitude = f
-                setItemMap(globalLatitude, globalLongitude, globalHeading)
-            } else if (name == "sim/graphics/view/view_heading") {
-                setItemString(itemHeading, "True Heading", oneDecimal.format(f.toDouble()) + "deg", false)
-                indicator = true
-                globalHeading = f
-                setItemMap(globalLatitude, globalLongitude, globalHeading)
-            } else if (name.startsWith("sim/cockpit2/switches/generic_lights_switch[")) {
-                // Extract out the number between [ ]
-                var s = name.substring(name.indexOf("[") + 1)
-                s = s.substring(0, s.indexOf("]"))
-                val n = s.toInt()
-                val t = genericLightsText[n]
-                t!!.setText("G$n")
-                if (f.toInt() > 0)
-                    t.setBackgroundColor(Color.LTGRAY)
-                else
-                    t.setBackgroundColor(Color.GRAY)
-                genericLightsValues[n] = f
-                indicator = true
-            } else if (name.startsWith("sim/cockpit2/switches/landing_lights_switch[")) {
-                // Extract out the number between [ ]
-                var s = name.substring(name.indexOf("[") + 1)
-                s = s.substring(0, s.indexOf("]"))
-                val n = s.toInt()
-                val t = landingLightsText[n]
-                t!!.setText("L$n")
-                if (f.toInt() > 0)
-                    t.setBackgroundColor(Color.LTGRAY)
-                else
-                    t.setBackgroundColor(Color.GRAY)
-                landingLightsValues[n] = f
-                indicator = true
-            } else {
-                // We don't need this value, it will only appear in the debug dump
-                indicator = false
-            }
+            // We are not requesting any values via the manual X-Plane UI any more,
+            // so nothing should be coming through here any more. Mark them all as unused
+            // for the debug dump. Previously we had our big if() statement right here,
+            // and keeping it just in case we want to use it later.
+            val indicator = false
 
             if (isDebugUI()) {
                 if (indicator) {
