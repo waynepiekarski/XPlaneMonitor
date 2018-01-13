@@ -631,7 +631,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         } else if (name == "sim/cockpit/switches/EFIS_shows_terrain[0]" || name == "1-sim/ndpanel/1/hsiTerr") {
             // TODO: Note that sim/cockpit/switches/EFIS_shows_terrain[0] does not seem to exist in XP737, except it should
             // TODO: mirror_xhsi_value()
-            efis_button_wxr.setState(value)
+            efis_button_terr.setState(value)
         } else {
             Log.e(Const.TAG, "Unhandled RREF name=$name, value=$value")
         }
