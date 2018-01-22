@@ -96,10 +96,6 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         setContentView(R.layout.activity_main)
 
         versionText.text = "v" + BuildConfig.VERSION_NAME + " " + BuildConfig.VERSION_CODE + " " + BuildConfig.BUILD_TYPE
-        exitButton.setOnClickListener {
-            Log.d(Const.TAG, "Exiting")
-            android.os.Process.killProcess(android.os.Process.myPid())
-        }
         resetButton.setOnClickListener {
             Log.d(Const.TAG, "Resetting internal map")
             mapDREF.clear()

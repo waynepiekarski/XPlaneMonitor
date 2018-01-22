@@ -84,31 +84,6 @@
             android:layout_weight="1"
             android:text="Map" />
 
-        <Button
-            android:id="@+id/exitButton"
-            style="@android:style/Widget.Button.Small"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Exit" />
-
-        <Button
-            android:id="@+id/resetButton"
-            style="@android:style/Widget.Button.Small"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_centerHorizontal="true"
-            android:layout_weight="1"
-            android:text="Reset" />
-
-        <Button
-            android:id="@+id/simulateButton"
-            style="@android:style/Widget.Button.Small"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Simulate" />
-
     </LinearLayout>
 
     <LinearLayout
@@ -477,6 +452,30 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/resetButton"
+                style="@android:style/Widget.Button.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:layout_weight="1"
+                android:text="Reset" />
+
+            <Button
+                android:id="@+id/simulateButton"
+                style="@android:style/Widget.Button.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Simulate" />
+        </LinearLayout>
+
 
         <ScrollView
             android:id="@+id/scrollView"
