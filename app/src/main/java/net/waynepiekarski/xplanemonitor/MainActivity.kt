@@ -55,7 +55,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
     internal var xplane_address: InetAddress? = null
     internal lateinit var data_listener: UDPReceiver
     internal lateinit var dref_listener: UDPReceiver
-    internal lateinit var becn_listener: MulticastReceiver
+    internal var becn_listener: MulticastReceiver? = null
     internal var mapDREF = TreeMap<String, Float>()
     internal var mapRREF = TreeMap<String, Float>()
     internal var mapDATA = TreeMap<String, String>()
@@ -91,18 +91,22 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         super.onConfigurationChanged(config)
     }
 
+    fun resetEverything() {
+        Log.d(Const.TAG, "Resetting internal map and all UI elements")
+        mapDREF.clear()
+        mapRREF.clear()
+        mapDATA.clear()
+        updateDebugUI()
+        resetIndicators()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         versionText.text = "v" + BuildConfig.VERSION_NAME + " " + BuildConfig.VERSION_CODE + " " + BuildConfig.BUILD_TYPE
         resetButton.setOnClickListener {
-            Log.d(Const.TAG, "Resetting internal map")
-            mapDREF.clear()
-            mapRREF.clear()
-            mapDATA.clear()
-            updateDebugUI()
-            resetIndicators()
+            resetEverything()
         }
         simulateButton.setOnClickListener {
             Log.d(Const.TAG, "Simulating some data")
@@ -304,6 +308,9 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         super.onResume()
         mapView.onResume()
 
+        resetEverything()
+        xplaneHost.text = "Re-detecting X-Plane"
+
         val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
         val ip = Formatter.formatIpAddress(wm.connectionInfo.ipAddress)
         Log.d(Const.TAG, "onResume(), starting listeners with IP address " + ip)
@@ -318,7 +325,10 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         Log.d(Const.TAG, "onPause(), cancelling UDP listeners")
         dref_listener.stopListener()
         data_listener.stopListener()
-        becn_listener.stopListener()
+        if (becn_listener != null) {
+            becn_listener!!.stopListener()
+            becn_listener = null
+        }
         mapView.onPause()
         super.onPause()
     }
@@ -406,10 +416,21 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         setItemString(itemEstimateFPM,  "NAV1 Est FPM",  if (airspeed_knots < 100 || distance_nm < 0.1) "N/A" else oneDecimal.format(fpm.toDouble()) + "fpm", false)
     }
 
+    override fun onNetworkFailure() {
+        Log.d(Const.TAG, "Received indication the network is not ready, cannot open socket")
+        xplaneHost.setText("No network")
+    }
+
     override fun onReceiveMulticast(buffer: ByteArray, source: InetAddress) {
         Log.d(Const.TAG, "Received BECN multicast packet from $source")
         Log.d(Const.TAG, "BECN packet printable: " + UDPReceiver.bytesToChars(buffer, buffer.size))
         Log.d(Const.TAG, "BECN packet hex: " + UDPReceiver.bytesToHex(buffer, buffer.size))
+
+        // The BECN listener will only reply once for a new X-Plane IP. If X-Plane restarts then the
+        // app needs to be restarted. If X-Plane changes IP address then the app needs restarting too.
+        becn_listener!!.stopListener()
+        becn_listener = null
+
         xplaneHost.setText("X-Plane: " + source.getHostAddress())
         xplane_address = source
 
