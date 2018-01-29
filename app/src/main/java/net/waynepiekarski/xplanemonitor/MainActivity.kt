@@ -193,11 +193,12 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             val efis_mode_next = if(efis_mode_state >= 3) 0 else efis_mode_state+1
             efis_mode_state = efis_mode_next
             check_thread(xplane_address, "Change EFIS mode to $efis_mode_next from $efis_mode_prev") {
-                dref_listener.sendDREF(xplane_address!!, "1-sim/ndpanel/1/hsiModeRotary", efis_mode_state.toFloat())
+                dref_listener.sendDREF(xplane_address!!, "1-sim/ndpanel/1/hsiModeRotary", efis_mode_state.toFloat()) // XP737
                 var rewrite = efis_mode_next
                 if (rewrite == 3)
                     rewrite = 4
-                dref_listener.sendDREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_submode[0]", rewrite.toFloat())
+                dref_listener.sendDREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_submode[0]", rewrite.toFloat()) // FF767
+                dref_listener.sendDREF(xplane_address!!, "laminar/B738/EFIS_control/capt/map_mode_pos", efis_mode_state.toFloat()) // ZB737
             }
         }
 
@@ -210,8 +211,12 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
                 efis_range_next = 0
             efis_range_state = efis_range_next
             check_thread(xplane_address, "Change EFIS range with direction $dir to $efis_range_next from $efis_range_prev") {
-                dref_listener.sendDREF(xplane_address!!, "1-sim/ndpanel/1/hsiRangeRotary", efis_range_state.toFloat())
-                dref_listener.sendDREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_range_selector[0]", efis_range_state.toFloat())
+                dref_listener.sendDREF(xplane_address!!, "1-sim/ndpanel/1/hsiRangeRotary", efis_range_state.toFloat())                  // FF767
+                dref_listener.sendDREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_range_selector[0]", efis_range_state.toFloat()) // XP737
+                if (dir > 0)
+                    dref_listener.sendCMND(xplane_address!!, "laminar/B738/EFIS_control/capt/map_range_up") // ZB737
+                else
+                    dref_listener.sendCMND(xplane_address!!, "laminar/B738/EFIS_control/capt/map_range_dn") // ZB737
             }
         }
 
@@ -231,8 +236,8 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         button_to_actions(efis_button_data, "laminar/B738/EFIS_control/capt/push_button/data_press", "1-sim/ndpanel/1/map4")
         button_to_cmnd(efis_button_pos, "laminar/B738/EFIS_control/capt/push_button/pos_press")
         button_to_actions(efis_button_terr, "laminar/B738/EFIS_control/capt/push_button/terr_press", "1-sim/ndpanel/1/hsiTerr")
-        // TODO: There does not appear to be a CTR button or dataref in the XP737
-        button_to_actions(efis_button_ctr, "laminar/B738/EFIS_control/capt/push_button/ctr_press_TODO", "1-sim/ndpanel/1/hsiModeButton")
+        // TODO: There does not appear to be a CTR button or dataref in the XP737, only Zibo seems to support the press and not receive an update
+        button_to_actions(efis_button_ctr, "laminar/B738/EFIS_control/capt/push_button/ctr_press", "1-sim/ndpanel/1/hsiModeButton")
 
         all_lights_on.setOnClickListener {
             check_thread(xplane_address, "Set all lights on") {
@@ -436,25 +441,40 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
 
         // Request values that we are interested in getting updates for
         check_thread(xplane_address, "Requesting values via RREF") {
-            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_submode[0]", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_range_selector[0]", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_tcas[0]", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_airports[0]", 2) // ARPT
-            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/map3", 2)                        // ARPT
-            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_waypoints[0]", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_VORs[0]", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_weather[0]", 2) // WXR
+            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_submode[0]", 2)        // Map XP737
+            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiModeRotary", 2)                   // Map FF767
+            dref_listener.sendRREF(xplane_address!!, "laminar/B738/EFIS_control/capt/map_mode_pos", 2)     // Map ZB737
+
+            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_range_selector[0]", 2) // Range XP737
+            dref_listener.sendRREF(xplane_address!!, "laminar/B738/EFIS/capt/map_range", 2)                // Range ZB737
+            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiRangeRotary", 2)                  // Range FF767
+
+            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_tcas[0]", 2)      // TFC XP737
+            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiRangeButton", 2)               // TFC FF767
+
+            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_airports[0]", 2)  // ARPT XP737
+            dref_listener.sendRREF(xplane_address!!, "laminar/B738/EFIS/EFIS_airport_on", 2)            // ARPT ZB737
+            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/map3", 2)                         // ARPT FF767
+
+            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_waypoints[0]", 2) // WPT XP737
+            dref_listener.sendRREF(xplane_address!!, "laminar/B738/EFIS/EFIS_fix_on", 2)                // WPT ZB737
+            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/map5", 2)                         // WPT FF767
+
+            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_VORs[0]", 2)      // STA XP737
+            dref_listener.sendRREF(xplane_address!!, "laminar/B738/EFIS/EFIS_vor_on", 2)                // STA ZB737
+            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/map2", 2)                         // STA FF767
+
+            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_weather[0]", 2)   // WXR XP737
+            dref_listener.sendRREF(xplane_address!!, "laminar/B738/EFIS/EFIS_wx_on", 2)                 // WXR ZB737
             // No need for this since EFIS_shows_weather[0] seems to pass this on
             // dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiWxr", 2) // WXR
-            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiModeRotary", 2)
-            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiRangeRotary", 2)
-            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/map4", 2)                        // DATA
-            // dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_data[0]", 2)              // DATA, does not exist in XP737?
-            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/map5", 2)                        // WPT
-            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/map2", 2)                        // STA, maps to NAVAID
-            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiTerr", 2)                     // TERR, no equivalent in XP737?
-            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiRangeButton", 2)              // TFC
-            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiModeButton", 2)               // CTR
+
+            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/map4", 2)                        // DATA FF767
+            // dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_data[0]", 2)              // DATA, does not exist in XP737 or ZB737?
+
+            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiTerr", 2)                     // TERR, no equivalent in XP737 or ZB737?
+
+            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiModeButton", 2)               // CTR FF767, no equivalent state on ZB737 or XP737
 
             dref_listener.sendRREF(xplane_address!!, "sim/operation/misc/frame_rate_period[0]", 2)
             dref_listener.sendRREF(xplane_address!!, "sim/cockpit2/controls/left_brake_ratio[0]", 2)
@@ -476,10 +496,12 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             dref_listener.sendRREF(xplane_address!!, "sim/flightmodel/position/latitude", 2)
             dref_listener.sendRREF(xplane_address!!, "sim/flightmodel/position/longitude", 2)
             dref_listener.sendRREF(xplane_address!!, "sim/graphics/view/view_heading", 2)
+
             for (i in 0 until landingLightsText.size)
                 dref_listener.sendRREF(xplane_address!!, "sim/cockpit2/switches/landing_lights_switch[$i]", 2)
             for (i in 0 until genericLightsText.size)
                 dref_listener.sendRREF(xplane_address!!, "sim/cockpit2/switches/generic_lights_switch[$i]", 2)
+
         }
     }
 
@@ -586,6 +608,20 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             else
                 t.setBackgroundColor(Color.GRAY)
             landingLightsValues[n] = value
+        } else if (name == "laminar/B738/EFIS_control/capt/map_mode_pos") {
+            val mode: String
+            if (value.toInt() == 0)
+                mode = "APP"
+            else if (value.toInt() == 1)
+                mode = "VOR"
+            else if (value.toInt() == 2)
+                mode = "MAP"
+            else if (value.toInt() == 3)
+                mode = "PLN"
+            else
+                mode = "N/A"
+            efis_mode_change.text = "EFIS " + mode
+            efis_mode_state = value.toInt()
         } else if (name == "sim/cockpit/switches/EFIS_map_submode[0]") {
             val mode: String
             if (value.toInt() == 0)
@@ -622,27 +658,31 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             val range = (1 shl value.toInt()) * 10
             map_zoom_range.text = "" + range + "nm"
             efis_range_state = value.toInt()
+        } else if (name == "laminar/B738/EFIS/capt/map_range") { // Zibo does the range differently than X-Plane
+            val range = (1 shl value.toInt()) * 5
+            map_zoom_range.text = "" + range + "nm"
+            efis_range_state = value.toInt()
         } else if (name == "sim/cockpit/switches/EFIS_shows_tcas[0]" || name == "1-sim/ndpanel/1/hsiRangeButton") {
             mirror_xhsi_value(name, "1-sim/ndpanel/1/hsiRangeButton", "sim/cockpit/switches/EFIS_shows_tcas[0]", value)
             efis_button_tfc.setState(value)
-        } else if (name == "sim/cockpit/switches/EFIS_shows_ctr_TODO[0]" || name == "1-sim/ndpanel/1/hsiModeButton") {
+        } else if (name == "1-sim/ndpanel/1/hsiModeButton") { // No equivalent for ZB737 or XP737
             // hsiModeButton seems to either never change, or always go 0->1->0 very quickly, so perhaps it can never be set in FF767
             mirror_xhsi_value(name, "1-sim/ndpanel/1/hsiModeButton", "sim/cockpit/switches/EFIS_shows_ctr_TODO[0]", value)
             efis_button_ctr.setState(value)
-        } else if (name == "sim/cockpit/switches/EFIS_shows_airports[0]" || name == "1-sim/ndpanel/1/map3") {
+        } else if (name == "sim/cockpit/switches/EFIS_shows_airports[0]" || name == "1-sim/ndpanel/1/map3" || name == "laminar/B738/EFIS/EFIS_airport_on") {
             mirror_xhsi_value(name, "1-sim/ndpanel/1/map3", "sim/cockpit/switches/EFIS_shows_airports[0]", value)
             efis_button_arpt.setState(value)
-        } else if (name == "sim/cockpit/switches/EFIS_shows_waypoints[0]" || name == "1-sim/ndpanel/1/map5") {
+        } else if (name == "sim/cockpit/switches/EFIS_shows_waypoints[0]" || name == "1-sim/ndpanel/1/map5" || name == "laminar/B738/EFIS/EFIS_fix_on") {
             mirror_xhsi_value(name, "1-sim/ndpanel/1/map5", "sim/cockpit/switches/EFIS_shows_waypoints[0]", value)
             efis_button_wpt.setState(value)
-        } else if (name == "sim/cockpit/switches/EFIS_shows_VORs[0]" || name == "1-sim/ndpanel/1/map2") {
+        } else if (name == "sim/cockpit/switches/EFIS_shows_VORs[0]" || name == "1-sim/ndpanel/1/map2" || name == "laminar/B738/EFIS/EFIS_vor_on") {
             mirror_xhsi_value(name, "1-sim/ndpanel/1/map2", "sim/cockpit/switches/EFIS_shows_VORs[0]", value)
             efis_button_sta.setState(value)
         } else if (name == "sim/cockpit/switches/EFIS_shows_data[0]" || name == "1-sim/ndpanel/1/map4") {
             // TODO: Note that sim/cockpit/switches/EFIS_shows_data[0] does not seem to exist in XP737, except it should
             // TODO: mirror_xhsi_value()
             efis_button_data.setState(value)
-        } else if (name == "sim/cockpit/switches/EFIS_shows_weather[0]" || name == "1-sim/ndpanel/1/hsiWxr") {
+        } else if (name == "sim/cockpit/switches/EFIS_shows_weather[0]" || name == "1-sim/ndpanel/1/hsiWxr" || name == "laminar/B738/EFIS/EFIS_wx_on") {
             mirror_xhsi_value(name, "1-sim/ndpanel/1/hsiWxr", "sim/cockpit/switches/EFIS_shows_weather[0]", value)
             efis_button_wxr.setState(value)
         } else if (name == "sim/cockpit/switches/EFIS_shows_terrain[0]" || name == "1-sim/ndpanel/1/hsiTerr") {
