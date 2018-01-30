@@ -19,6 +19,11 @@ android {
             minifyEnabled true
             shrinkResources true
         }
+        debug {
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro', 'proguard-rules-debug.pro'
+            minifyEnabled true
+            shrinkResources true
+        }
     }
     dataBinding.enabled = true
 }
@@ -26,7 +31,7 @@ android {
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     compile 'com.google.android.gms:play-services-maps:11.0.4'
-    compile "org.jetbrains.kotlin:kotlin-stdlib-jre7:$kotlin_version"
-    compile 'org.jetbrains.kotlinx:kotlinx-coroutines-core:0.19.3'
-    compile 'org.jetbrains.kotlinx:kotlinx-coroutines-android:0.19.3'
+    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    compile 'org.jetbrains.kotlinx:kotlinx-coroutines-core:0.22'
+    compile 'org.jetbrains.kotlinx:kotlinx-coroutines-android:0.22'
 }
