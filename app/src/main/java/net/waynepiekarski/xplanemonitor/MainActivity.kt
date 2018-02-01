@@ -836,7 +836,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             for (i in fields.indices) {
                 if (fields[i].name.startsWith("item")) {
                     val res = fields[i].getInt(null)
-                    val v = findViewById(res)
+                    val v = findViewById<TextView>(res)
                     v.setBackgroundColor(Color.GRAY)
                 }
             }

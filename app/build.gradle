@@ -4,12 +4,11 @@ apply plugin: 'kotlin-android-extensions'
 kotlin { experimental { coroutines 'enable' } }
 
 android {
-    compileSdkVersion 25
-    buildToolsVersion '26.0.2'
+    compileSdkVersion 27
     defaultConfig {
         applicationId "net.waynepiekarski.xplanemonitor"
         minSdkVersion 14
-        targetSdkVersion 25
+        targetSdkVersion 27
         versionCode 1
         versionName "1.2"
     }
