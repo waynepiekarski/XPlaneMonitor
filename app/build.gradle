@@ -13,6 +13,7 @@ android {
         versionName "1.2"
     }
     buildTypes {
+        /*
         release {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             minifyEnabled true
@@ -23,6 +24,7 @@ android {
             minifyEnabled true
             shrinkResources true
         }
+        */
     }
 }
 
