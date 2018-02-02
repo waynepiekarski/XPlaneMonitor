@@ -829,9 +829,10 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
     }
 
     fun resetIndicators() {
+        val name = "$packageName.R\$id"
         try {
             // Set every View starting with "item" to a default gray color
-            val c = Class.forName("$packageName.R\$id")
+            val c = Class.forName(name)
             val fields = c.fields
             for (i in fields.indices) {
                 if (fields[i].name.startsWith("item")) {
@@ -847,10 +848,10 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
                 i?.setBackgroundColor(Color.GRAY)
             }
         } catch (e: ClassNotFoundException) {
-            Log.e(Const.TAG, "Could not locate R.id class")
+            Log.e(Const.TAG, "resetIndicators exception: Could not locate R.id class with $name")
             e.printStackTrace()
         } catch (e: IllegalAccessException) {
-            Log.e(Const.TAG, "Could not access R.id class")
+            Log.e(Const.TAG, "resetIndicators exception: Could not access R.id class with $name")
             e.printStackTrace()
         }
 
