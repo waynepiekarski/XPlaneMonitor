@@ -23,3 +23,18 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+
+
+# Need all of the following to make sure Class.forName works with R.id lookups
+
+-keepattributes InnerClasses
+
+-keep class **.R
+-keep class **.R$* {
+    <fields>;
+}
+
+-keepclassmembers class **.R$* {
+public static <fields>;
+}
