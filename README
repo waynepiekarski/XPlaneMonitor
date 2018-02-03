@@ -1,0 +1,50 @@
+// ---------------------------------------------------------------------
+//
+// XPlaneMonitor
+//
+// Copyright (C) 2017-2018 Wayne Piekarski
+// wayne@tinmith.net http://tinmith.net/wayne
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//
+// ---------------------------------------------------------------------
+
+
+XPlaneMonitor is an Android application that interfaces with X-Plane 11.
+
+This app displays flight info about the brakes, flaps, landing gear, 
+reverse thrust, G-forces, time and distance to NAV1, without having to 
+look around the cockpit.
+
+It also has buttons to turn on and off all lights, and adjust all the 
+settings for the EFIS map display. It works with the X-Plane and Zibo 737,
+and the Flight Factor 767. It also implements protocol conversion so you
+can use the Flight Factor 767 with XHSI displays, which normally doesn't
+support the 767.
+
+There is also a moving map showing the current aircraft location.
+
+This app does not need any plugin, it requests everything from an 
+X-Plane discovered via BECN broadcasts, and uses the standard UDP 
+protocol.
+
+You can download the app directly to your Android device from the Google 
+Play store: 
+https://play.google.com/store/apps/details?id=net.waynepiekarski.xplanemonitor
+
+This application is open source, written in Kotlin, and released under the GNU Public License 
+version 3 (GPLv3).
+
+This is an early prototype and I look forward to feedback on any 
+problems. File bugs or comments here on GitHub.
