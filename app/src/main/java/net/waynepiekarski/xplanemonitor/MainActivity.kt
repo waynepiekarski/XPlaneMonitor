@@ -23,12 +23,9 @@
 package net.waynepiekarski.xplanemonitor
 
 import android.app.Activity
-import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
-import android.net.wifi.WifiManager
 import android.os.Bundle
-import android.text.format.Formatter
 import android.util.Log
 import android.view.View
 import android.widget.Button
@@ -315,11 +312,6 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
 
         resetEverything()
         xplaneHost.text = "Re-detecting X-Plane"
-
-        val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        val ip = Formatter.formatIpAddress(wm.connectionInfo.ipAddress)
-        Log.d(Const.TAG, "onResume(), starting listeners with IP address " + ip)
-        ipAddress.text = ip + ":" + Const.UDP_DREF_PORT + "/" + Const.UDP_DATA_PORT
 
         dref_listener = UDPReceiver(Const.UDP_DREF_PORT, this)
         data_listener = UDPReceiver(Const.UDP_DATA_PORT, this)

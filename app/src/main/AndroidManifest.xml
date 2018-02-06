@@ -2,12 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="net.waynepiekarski.xplanemonitor">
 
-    <!-- Need to listen to UDP datagrams -->
+    <!-- Need to send and receive UDP datagrams -->
     <uses-permission android:name="android.permission.INTERNET" />
-
-    <!-- Need to learn the IP address used for the WiFi network adapter -->
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-
 
     <application
         android:allowBackup="true"

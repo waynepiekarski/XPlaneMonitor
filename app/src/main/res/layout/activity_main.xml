@@ -22,17 +22,6 @@
             android:textAlignment="center" />
 
         <TextView
-            android:id="@+id/ipAddress"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:ems="10"
-            android:text="WiFi IP Address"
-            android:textAlignment="center"
-            tools:layout_editor_absoluteX="0dp"
-            tools:layout_editor_absoluteY="0dp" />
-
-        <TextView
             android:id="@+id/xplaneHost"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
