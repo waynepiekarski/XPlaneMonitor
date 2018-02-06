@@ -50,12 +50,10 @@ import kotlin.concurrent.thread
 class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnReceiveMulticast {
 
     internal var xplane_address: InetAddress? = null
-    internal lateinit var data_listener: UDPReceiver
     internal lateinit var dref_listener: UDPReceiver
     internal var becn_listener: MulticastReceiver? = null
     internal var mapDREF = TreeMap<String, Float>()
     internal var mapRREF = TreeMap<String, Float>()
-    internal var mapDATA = TreeMap<String, String>()
     internal var sequence = 0
     internal var fourDecimal = DecimalFormat("0.0000")
     internal var oneDecimal = DecimalFormat("0.0")
@@ -92,7 +90,6 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         Log.d(Const.TAG, "Resetting internal map and all UI elements")
         mapDREF.clear()
         mapRREF.clear()
-        mapDATA.clear()
         updateDebugUI()
         resetIndicators()
     }
@@ -314,14 +311,12 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         xplaneHost.text = "Re-detecting X-Plane"
 
         dref_listener = UDPReceiver(Const.UDP_DREF_PORT, this)
-        data_listener = UDPReceiver(Const.UDP_DATA_PORT, this)
         becn_listener = MulticastReceiver(Const.BECN_ADDRESS, Const.BECN_PORT, this)
     }
 
     override fun onPause() {
         Log.d(Const.TAG, "onPause(), cancelling UDP listeners")
         dref_listener.stopListener()
-        data_listener.stopListener()
         if (becn_listener != null) {
             becn_listener!!.stopListener()
             becn_listener = null
@@ -756,42 +751,13 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
                 item ++
             }
         } else if (buffer.size >= 5 && buffer[0] == 'D'.toByte() && buffer[1] == 'A'.toByte() && buffer[2] == 'T'.toByte() && buffer[3] == 'A'.toByte() && buffer[4] == '*'.toByte()) {
-            // Log.d(Const.TAG, "Found DATA* packet");
-            // A data blob is an int (4 bytes) followed by 8 floats (8*4) = total 36
-            // There can be many blobs in a single UDP packet (5 byte header + n*36 == packet size)
-            val blob_length = 4 + 8 * 4
-            var start: Int
-            start = 5
-            val array = FloatArray(8)
-            while (start < buffer.size) {
-                val id = ByteBuffer.wrap(buffer, start, 4).order(ByteOrder.LITTLE_ENDIAN).int
-                val idx = start + 4
-                var debugArray = if (isDebugUI()) "[" else null
-                for (f in 0..7) {
-                    array[f] = ByteBuffer.wrap(buffer, idx, 4).order(ByteOrder.LITTLE_ENDIAN).float
-                    if (debugArray != null) {
-                        debugArray += XPlaneData.names[id * 8 + f] + "(" + XPlaneData.units[id * 8 + f] + ")="
-                        debugArray += getCompactFloat(array[f])
-                        if (f < 7)
-                            debugArray += ", "
-                    }
-                }
-                // Log.d(Const.TAG, "DATA* id=" + id + " array=" + debugArray);
-                if (debugArray != null) {
-                    debugArray += "]"
-                    mapDATA.put("DATA*" + id, debugArray)
-                    updateDebugUI()
-                }
-                start += blob_length
-            }
-            if (start != buffer.size)
-                Log.e(Const.TAG, "Mismatch in buffer size, end was " + start + " but buffer length was " + buffer.size)
+            // Log.d(Const.TAG, "Ignoring legacy DATA* packet with size ${buffer.size}")
         } else {
             Log.e(Const.TAG, "Ignoring unknown packet: " + UDPReceiver.bytesToChars(buffer, buffer.size))
         }
     }
 
-    inline fun isDebugUI(): Boolean {
+    fun isDebugUI(): Boolean {
         return (layoutDebug.visibility == View.VISIBLE)
     }
 
@@ -811,11 +777,6 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         for ((key, value) in mapRREF) {
             // Log.d(Const.TAG, "Key=" + entry.getKey() + " Value=" + entry.getValue());
             out = out + "\n" + "RREF: " + key + " = " + getCompactFloat(value)
-        }
-        out = out + "\n"
-        for ((key, value) in mapDATA) {
-            // Log.d(Const.TAG, "Key=" + entry.getKey() + " Value=" + entry.getValue());
-            out = out + "\n" + key + " = " + value
         }
         debugText.text = out
     }
