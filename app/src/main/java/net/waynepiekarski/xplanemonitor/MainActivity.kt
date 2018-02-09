@@ -408,12 +408,17 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         setItemString(itemEstimateFPM,  "NAV1 Est FPM",  if (airspeed_knots < 100 || distance_nm < 0.1) "N/A" else oneDecimal.format(fpm.toDouble()) + "fpm", false)
     }
 
-    override fun onNetworkFailure() {
+    override fun onTimeoutMulticast(ref: MulticastReceiver) {
+        Log.d(Const.TAG, "Received indication that we never received any BECN packets, need to keep waiting")
+        xplaneHost.setText("BECN timeout")
+    }
+
+    override fun onFailureMulticast(ref: MulticastReceiver) {
         Log.d(Const.TAG, "Received indication the network is not ready, cannot open socket")
         xplaneHost.setText("No network")
     }
 
-    override fun onReceiveMulticast(buffer: ByteArray, source: InetAddress) {
+    override fun onReceiveMulticast(buffer: ByteArray, source: InetAddress, ref: MulticastReceiver) {
         Log.d(Const.TAG, "Received BECN multicast packet from $source")
         Log.d(Const.TAG, "BECN packet printable: " + UDPReceiver.bytesToChars(buffer, buffer.size))
         Log.d(Const.TAG, "BECN packet hex: " + UDPReceiver.bytesToHex(buffer, buffer.size))
