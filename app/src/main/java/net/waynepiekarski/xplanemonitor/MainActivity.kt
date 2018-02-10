@@ -23,12 +23,17 @@
 package net.waynepiekarski.xplanemonitor
 
 import android.app.Activity
+import android.app.AlertDialog
+import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.widget.Button
+import android.widget.EditText
 import android.widget.TextView
 
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -41,6 +46,7 @@ import kotlinx.android.synthetic.main.activity_main.*
 
 import java.io.IOException
 import java.net.InetAddress
+import java.net.UnknownHostException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.text.DecimalFormat
@@ -49,9 +55,13 @@ import kotlin.concurrent.thread
 
 class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnReceiveMulticast {
 
-    internal var xplane_address: InetAddress? = null
-    internal lateinit var dref_listener: UDPReceiver
+    internal var xplaneAddress: InetAddress? = null
+    internal var dref_listener: UDPReceiver? = null
     internal var becn_listener: MulticastReceiver? = null
+    private var manualAddress: String = ""
+    private var manualInetAddress: InetAddress? = null
+    private var connectShutdown = false
+
     internal var mapDREF = TreeMap<String, Float>()
     internal var mapRREF = TreeMap<String, Float>()
     internal var sequence = 0
@@ -104,8 +114,8 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         }
         simulateButton.setOnClickListener {
             Log.d(Const.TAG, "Simulating some data")
-            onReceiveUDP(sample_groundspeed)
-            onReceiveUDP(sample_data)
+            onReceiveUDP(dref_listener!!, sample_groundspeed)
+            onReceiveUDP(dref_listener!!, sample_data)
 
             Log.d(Const.TAG, "Processing res/raw/xplane_dump.raw file")
             val stream = resources.openRawResource(R.raw.xplane_dump)
@@ -116,7 +126,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
                     val len = stream.read(packet)
                     if (len != packet.size)
                         break
-                    onReceiveUDP(packet)
+                    onReceiveUDP(dref_listener!!, packet)
                     count++
                 }
                 Log.d(Const.TAG, "Finished processing rew/raw/xplane_dump.raw with $count packets")
@@ -156,10 +166,15 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             updateDebugUI()
         }
 
+        switchDetectButton.setOnClickListener {
+            Log.d(Const.TAG, "Popup for manual hostname")
+            popupManualHostname()
+        }
+
         fun button_to_cmnd(button: Button, cmnd: String) {
             button.setOnClickListener {
-                check_thread(xplane_address, "Button for command $cmnd") {
-                    dref_listener.sendCMND(xplane_address!!, cmnd)
+                check_thread(xplaneAddress, "Button for command $cmnd") {
+                    dref_listener!!.sendCMND(xplaneAddress!!, cmnd)
                 }
             }
         }
@@ -167,17 +182,17 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         fun button_to_actions(button: XButton, cmnd: String, dref: String) {
             button.setOnClickListener {
                 val value = button.getInverseState()
-                check_thread(xplane_address, "Button for CMND $cmnd, and DREF $dref to $value") {
-                    dref_listener.sendCMND(xplane_address!!, cmnd)
-                    dref_listener.sendDREF(xplane_address!!, dref, value)
+                check_thread(xplaneAddress, "Button for CMND $cmnd, and DREF $dref to $value") {
+                    dref_listener!!.sendCMND(xplaneAddress!!, cmnd)
+                    dref_listener!!.sendDREF(xplaneAddress!!, dref, value)
                 }
             }
         }
 
         fun button_to_dref(button: XButton, dref: String, value: Float) {
             button.setOnClickListener {
-                check_thread(xplane_address, "Button for DREF $dref to $value") {
-                    dref_listener.sendDREF(xplane_address!!, dref, value)
+                check_thread(xplaneAddress, "Button for DREF $dref to $value") {
+                    dref_listener!!.sendDREF(xplaneAddress!!, dref, value)
                 }
             }
         }
@@ -186,13 +201,13 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             val efis_mode_prev = efis_mode_state
             val efis_mode_next = if(efis_mode_state >= 3) 0 else efis_mode_state+1
             efis_mode_state = efis_mode_next
-            check_thread(xplane_address, "Change EFIS mode to $efis_mode_next from $efis_mode_prev") {
-                dref_listener.sendDREF(xplane_address!!, "1-sim/ndpanel/1/hsiModeRotary", efis_mode_state.toFloat()) // XP737
+            check_thread(xplaneAddress, "Change EFIS mode to $efis_mode_next from $efis_mode_prev") {
+                dref_listener!!.sendDREF(xplaneAddress!!, "1-sim/ndpanel/1/hsiModeRotary", efis_mode_state.toFloat()) // XP737
                 var rewrite = efis_mode_next
                 if (rewrite == 3)
                     rewrite = 4
-                dref_listener.sendDREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_submode[0]", rewrite.toFloat()) // FF767
-                dref_listener.sendDREF(xplane_address!!, "laminar/B738/EFIS_control/capt/map_mode_pos", efis_mode_state.toFloat()) // ZB737
+                dref_listener!!.sendDREF(xplaneAddress!!, "sim/cockpit/switches/EFIS_map_submode[0]", rewrite.toFloat()) // FF767
+                dref_listener!!.sendDREF(xplaneAddress!!, "laminar/B738/EFIS_control/capt/map_mode_pos", efis_mode_state.toFloat()) // ZB737
             }
         }
 
@@ -204,13 +219,13 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             else if (efis_range_next < 0)
                 efis_range_next = 0
             efis_range_state = efis_range_next
-            check_thread(xplane_address, "Change EFIS range with direction $dir to $efis_range_next from $efis_range_prev") {
-                dref_listener.sendDREF(xplane_address!!, "1-sim/ndpanel/1/hsiRangeRotary", efis_range_state.toFloat())                  // FF767
-                dref_listener.sendDREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_range_selector[0]", efis_range_state.toFloat()) // XP737
+            check_thread(xplaneAddress, "Change EFIS range with direction $dir to $efis_range_next from $efis_range_prev") {
+                dref_listener!!.sendDREF(xplaneAddress!!, "1-sim/ndpanel/1/hsiRangeRotary", efis_range_state.toFloat())                  // FF767
+                dref_listener!!.sendDREF(xplaneAddress!!, "sim/cockpit/switches/EFIS_map_range_selector[0]", efis_range_state.toFloat()) // XP737
                 if (dir > 0)
-                    dref_listener.sendCMND(xplane_address!!, "laminar/B738/EFIS_control/capt/map_range_up") // ZB737
+                    dref_listener!!.sendCMND(xplaneAddress!!, "laminar/B738/EFIS_control/capt/map_range_up") // ZB737
                 else
-                    dref_listener.sendCMND(xplane_address!!, "laminar/B738/EFIS_control/capt/map_range_dn") // ZB737
+                    dref_listener!!.sendCMND(xplaneAddress!!, "laminar/B738/EFIS_control/capt/map_range_dn") // ZB737
             }
         }
 
@@ -234,20 +249,20 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         button_to_actions(efis_button_ctr, "laminar/B738/EFIS_control/capt/push_button/ctr_press", "1-sim/ndpanel/1/hsiModeButton")
 
         all_lights_on.setOnClickListener {
-            check_thread(xplane_address, "Set all lights on") {
+            check_thread(xplaneAddress, "Set all lights on") {
                 for (i in 0 until landingLightsText.size)
-                    dref_listener.sendDREF(xplane_address!!, "sim/cockpit2/switches/landing_lights_switch[$i]", 1.0f)
+                    dref_listener!!.sendDREF(xplaneAddress!!, "sim/cockpit2/switches/landing_lights_switch[$i]", 1.0f)
                 for (i in 0 until genericLightsText.size)
-                    dref_listener.sendDREF(xplane_address!!, "sim/cockpit2/switches/generic_lights_switch[$i]", 1.0f)
+                    dref_listener!!.sendDREF(xplaneAddress!!, "sim/cockpit2/switches/generic_lights_switch[$i]", 1.0f)
             }
         }
 
         all_lights_off.setOnClickListener {
-            check_thread(xplane_address, "Set all lights off") {
+            check_thread(xplaneAddress, "Set all lights off") {
                 for (i in 0 until landingLightsText.size)
-                    dref_listener.sendDREF(xplane_address!!, "sim/cockpit2/switches/landing_lights_switch[$i]", 0.0f)
+                    dref_listener!!.sendDREF(xplaneAddress!!, "sim/cockpit2/switches/landing_lights_switch[$i]", 0.0f)
                 for (i in 0 until genericLightsText.size)
-                    dref_listener.sendDREF(xplane_address!!, "sim/cockpit2/switches/generic_lights_switch[$i]", 0.0f)
+                    dref_listener!!.sendDREF(xplaneAddress!!, "sim/cockpit2/switches/generic_lights_switch[$i]", 0.0f)
             }
         }
 
@@ -258,8 +273,8 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             layout_lights.addView(t)
             t.setOnClickListener {
                 val inverted = 1.0f - landingLightsValues[i]
-                check_thread(xplane_address, "Clicked landing_lights_switch[$i] from " + landingLightsValues[i] + " to new " + inverted) {
-                    dref_listener.sendDREF(xplane_address!!, "sim/cockpit2/switches/landing_lights_switch[$i]", inverted)
+                check_thread(xplaneAddress, "Clicked landing_lights_switch[$i] from " + landingLightsValues[i] + " to new " + inverted) {
+                    dref_listener!!.sendDREF(xplaneAddress!!, "sim/cockpit2/switches/landing_lights_switch[$i]", inverted)
                 }
             }
             landingLightsText[i] = t
@@ -271,13 +286,14 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             layout_lights.addView(t)
             t.setOnClickListener {
                 val inverted = 1.0f - genericLightsValues[i]
-                check_thread(xplane_address, "Clicked generic_lights_switch[$i] from " + genericLightsValues[i] + " to new " + inverted) {
-                    dref_listener.sendDREF(xplane_address!!, "sim/cockpit2/switches/generic_lights_switch[$i]", inverted)
+                check_thread(xplaneAddress, "Clicked generic_lights_switch[$i] from " + genericLightsValues[i] + " to new " + inverted) {
+                    dref_listener!!.sendDREF(xplaneAddress!!, "sim/cockpit2/switches/generic_lights_switch[$i]", inverted)
                 }
             }
             genericLightsText[i] = t
         }
 
+        // Reset display elements to a known state
         resetIndicators()
 
         // Based on https://stackoverflow.com/questions/16536414/how-to-use-mapview-in-android-using-google-map-v2
@@ -298,25 +314,122 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         }
         thread(start = true) {
             Log.d(Const.TAG, "XHSI: Started thread/send for mirroring from [$src] to [$dest] value $value")
-            dref_listener.sendDREF(xplane_address!!, dest, value)
+            dref_listener!!.sendDREF(xplaneAddress!!, dest, value)
         }
 
+    }
+
+    // The user can click on the connectText and specify a X-Plane hostname manually
+    private fun changeManualHostname(hostname: String) {
+        if (hostname.isEmpty()) {
+            Log.d(Const.TAG, "Clearing override X-Plane hostname for automatic mode, saving to prefs, restarting networking")
+            manualAddress = hostname
+            val sharedPref = getPreferences(Context.MODE_PRIVATE)
+            with(sharedPref.edit()){
+                putString("manual_address", manualAddress)
+                commit()
+            }
+            switchDetectButton.text = "Auto BECN"
+            restartNetworking()
+        } else {
+            Log.d(Const.TAG, "Setting override X-Plane hostname to $manualAddress")
+            // Lookup the IP address on a background thread
+            thread(start = true) {
+                try {
+                    manualInetAddress = InetAddress.getByName(hostname)
+                } catch (e: UnknownHostException) {
+                    // IP address was not valid, so ask for another one and exit this thread
+                    Handler(Looper.getMainLooper()).post { popupManualHostname(error=true) }
+                    return@thread
+                }
+
+                // We got a valid IP address, so we can now restart networking on the UI thread
+                Handler(Looper.getMainLooper()).post {
+                    manualAddress = hostname
+                    Log.d(Const.TAG, "Converted manual X-Plane hostname [$manualAddress] to ${manualInetAddress}, saving to prefs, restarting networking")
+                    val sharedPref = getPreferences(Context.MODE_PRIVATE)
+                    with(sharedPref.edit()) {
+                        putString("manual_address", manualAddress)
+                        commit()
+                    }
+                    switchDetectButton.text = "Manual: " + manualAddress
+                    restartNetworking()
+                }
+            }
+        }
+    }
+
+    private fun popupManualHostname(error: Boolean = false) {
+        val builder = AlertDialog.Builder(this)
+        if (error)
+            builder.setTitle("Invalid entry! Specify X-Plane hostname or IP")
+        else
+            builder.setTitle("Specify X-Plane hostname or IP")
+
+        val input = EditText(this)
+        input.setText(manualAddress)
+        builder.setView(input)
+        builder.setPositiveButton("Manual Override") { dialog, which -> changeManualHostname(input.text.toString()) }
+        builder.setNegativeButton("Revert") { dialog, which -> dialog.cancel() }
+        builder.setNeutralButton("Automatic Multicast") { dialog, which -> changeManualHostname("") }
+        builder.show()
+    }
+
+
+    fun restartNetworking() {
+        Log.d(Const.TAG, "restartNetworking()")
+        resetEverything()
+        xplaneStatus.text = "Re-detecting X-Plane"
+
+        Log.d(Const.TAG, "Cleaning up existing sockets")
+        if (dref_listener != null) {
+            dref_listener!!.stopListener()
+            dref_listener = null
+        }
+        if (becn_listener != null) {
+            becn_listener!!.stopListener()
+            becn_listener = null
+        }
+
+        if (connectShutdown) {
+            Log.d(Const.TAG, "Will not restart BECN listener since connectShutdown is set")
+        } else {
+            if (manualAddress.isEmpty()) {
+                xplaneStatus.setText("Waiting for X-Plane BECN")
+                Log.d(Const.TAG, "Starting X-Plane BECN listener since connectShutdown is not set")
+                becn_listener = MulticastReceiver(Const.BECN_ADDRESS, Const.BECN_PORT, this)
+            } else {
+                Log.d(Const.TAG, "Manual address $manualAddress specified, skipping any auto-detection")
+                check(becn_listener == null) { "becn_listener should not be initialized" }
+                dref_listener = UDPReceiver(Const.UDP_DREF_PORT, this)
+                xplaneAddress = manualInetAddress
+                xplaneStatus.setText("X-Plane: " + xplaneAddress!!.getHostAddress())
+            }
+        }
     }
 
     override fun onResume() {
         super.onResume()
         mapView.onResume()
 
-        resetEverything()
-        xplaneHost.text = "Re-detecting X-Plane"
+        connectShutdown = false
 
-        dref_listener = UDPReceiver(Const.UDP_DREF_PORT, this)
-        becn_listener = MulticastReceiver(Const.BECN_ADDRESS, Const.BECN_PORT, this)
+        // Retrieve the manual address from shared preferences
+        val sharedPref = getPreferences(Context.MODE_PRIVATE)
+        val prefAddress = sharedPref.getString("manual_address", "")
+        Log.d(Const.TAG, "Found preferences value for manual_address = [$prefAddress]")
+
+        // Pass on whatever this string is, and will end up calling restartNetworking()
+        changeManualHostname(prefAddress)
     }
 
     override fun onPause() {
         Log.d(Const.TAG, "onPause(), cancelling UDP listeners")
-        dref_listener.stopListener()
+        connectShutdown = true // Prevent new BECN listeners starting up in restartNetworking
+        if (dref_listener != null) {
+            dref_listener!!.stopListener()
+            dref_listener = null
+        }
         if (becn_listener != null) {
             becn_listener!!.stopListener()
             becn_listener = null
@@ -410,12 +523,78 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
 
     override fun onTimeoutMulticast(ref: MulticastReceiver) {
         Log.d(Const.TAG, "Received indication that we never received any BECN packets, need to keep waiting")
-        xplaneHost.setText("BECN timeout")
+        xplaneStatus.setText("Re-detecting X-Plane - BECN timeout")
     }
 
     override fun onFailureMulticast(ref: MulticastReceiver) {
         Log.d(Const.TAG, "Received indication the network is not ready, cannot open socket")
-        xplaneHost.setText("No network")
+        xplaneStatus.setText("No network")
+    }
+
+    private fun requestRREF() {
+        // Request values that we are interested in getting updates for
+        check_thread(xplaneAddress, "Requesting values via RREF") {
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit/switches/EFIS_map_submode[0]", 2)        // Map XP737
+            dref_listener!!.sendRREF(xplaneAddress!!, "1-sim/ndpanel/1/hsiModeRotary", 2)                   // Map FF767
+            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/EFIS_control/capt/map_mode_pos", 2)     // Map ZB737
+
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit/switches/EFIS_map_range_selector[0]", 2) // Range XP737
+            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/EFIS/capt/map_range", 2)                // Range ZB737
+            dref_listener!!.sendRREF(xplaneAddress!!, "1-sim/ndpanel/1/hsiRangeRotary", 2)                  // Range FF767
+
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit/switches/EFIS_shows_tcas[0]", 2)      // TFC XP737
+            dref_listener!!.sendRREF(xplaneAddress!!, "1-sim/ndpanel/1/hsiRangeButton", 2)               // TFC FF767
+
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit/switches/EFIS_shows_airports[0]", 2)  // ARPT XP737
+            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/EFIS/EFIS_airport_on", 2)            // ARPT ZB737
+            dref_listener!!.sendRREF(xplaneAddress!!, "1-sim/ndpanel/1/map3", 2)                         // ARPT FF767
+
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit/switches/EFIS_shows_waypoints[0]", 2) // WPT XP737
+            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/EFIS/EFIS_fix_on", 2)                // WPT ZB737
+            dref_listener!!.sendRREF(xplaneAddress!!, "1-sim/ndpanel/1/map5", 2)                         // WPT FF767
+
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit/switches/EFIS_shows_VORs[0]", 2)      // STA XP737
+            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/EFIS/EFIS_vor_on", 2)                // STA ZB737
+            dref_listener!!.sendRREF(xplaneAddress!!, "1-sim/ndpanel/1/map2", 2)                         // STA FF767
+
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit/switches/EFIS_shows_weather[0]", 2)   // WXR XP737
+            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/EFIS/EFIS_wx_on", 2)                 // WXR ZB737
+            // No need for this since EFIS_shows_weather[0] seems to pass this on
+            // dref_listener!!.sendRREF(xplaneAddress!!, "1-sim/ndpanel/1/hsiWxr", 2) // WXR
+
+            dref_listener!!.sendRREF(xplaneAddress!!, "1-sim/ndpanel/1/map4", 2)                        // DATA FF767
+            // dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit/switches/EFIS_shows_data[0]", 2)              // DATA, does not exist in XP737 or ZB737?
+
+            dref_listener!!.sendRREF(xplaneAddress!!, "1-sim/ndpanel/1/hsiTerr", 2)                     // TERR, no equivalent in XP737 or ZB737?
+
+            dref_listener!!.sendRREF(xplaneAddress!!, "1-sim/ndpanel/1/hsiModeButton", 2)               // CTR FF767, no equivalent state on ZB737 or XP737
+
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/operation/misc/frame_rate_period[0]", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit2/controls/left_brake_ratio[0]", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit2/controls/right_brake_ratio[0]", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit2/controls/parking_brake_ratio[0]", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit2/controls/speedbrake_ratio[0]", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit/warnings/annunciators/reverse[0]", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/flightmodel/position/indicated_airspeed[0]", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/flightmodel/position/y_agl[0]", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/flightmodel/position/elevation[0]", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit2/gauges/indicators/altitude_ft_pilot[0]", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit2/controls/flap_handle_deploy_ratio[0]", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/flightmodel/controls/flaprqst[0]", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/flightmodel2/gear/tire_vertical_force_n_mtr[0]", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/flightmodel/forces/g_nrml[0]", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit/radios/nav1_dme_dist_m[0]", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit/radios/nav2_dme_dist_m[0]", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/flightmodel/position/vh_ind_fpm", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/flightmodel/position/latitude", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/flightmodel/position/longitude", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/graphics/view/view_heading", 2)
+
+            for (i in 0 until landingLightsText.size)
+                dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit2/switches/landing_lights_switch[$i]", 2)
+            for (i in 0 until genericLightsText.size)
+                dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit2/switches/generic_lights_switch[$i]", 2)
+        }
     }
 
     override fun onReceiveMulticast(buffer: ByteArray, source: InetAddress, ref: MulticastReceiver) {
@@ -428,73 +607,10 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         becn_listener!!.stopListener()
         becn_listener = null
 
-        xplaneHost.setText("X-Plane: " + source.getHostAddress())
-        xplane_address = source
-
-        // Request values that we are interested in getting updates for
-        check_thread(xplane_address, "Requesting values via RREF") {
-            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_submode[0]", 2)        // Map XP737
-            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiModeRotary", 2)                   // Map FF767
-            dref_listener.sendRREF(xplane_address!!, "laminar/B738/EFIS_control/capt/map_mode_pos", 2)     // Map ZB737
-
-            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_map_range_selector[0]", 2) // Range XP737
-            dref_listener.sendRREF(xplane_address!!, "laminar/B738/EFIS/capt/map_range", 2)                // Range ZB737
-            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiRangeRotary", 2)                  // Range FF767
-
-            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_tcas[0]", 2)      // TFC XP737
-            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiRangeButton", 2)               // TFC FF767
-
-            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_airports[0]", 2)  // ARPT XP737
-            dref_listener.sendRREF(xplane_address!!, "laminar/B738/EFIS/EFIS_airport_on", 2)            // ARPT ZB737
-            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/map3", 2)                         // ARPT FF767
-
-            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_waypoints[0]", 2) // WPT XP737
-            dref_listener.sendRREF(xplane_address!!, "laminar/B738/EFIS/EFIS_fix_on", 2)                // WPT ZB737
-            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/map5", 2)                         // WPT FF767
-
-            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_VORs[0]", 2)      // STA XP737
-            dref_listener.sendRREF(xplane_address!!, "laminar/B738/EFIS/EFIS_vor_on", 2)                // STA ZB737
-            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/map2", 2)                         // STA FF767
-
-            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_weather[0]", 2)   // WXR XP737
-            dref_listener.sendRREF(xplane_address!!, "laminar/B738/EFIS/EFIS_wx_on", 2)                 // WXR ZB737
-            // No need for this since EFIS_shows_weather[0] seems to pass this on
-            // dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiWxr", 2) // WXR
-
-            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/map4", 2)                        // DATA FF767
-            // dref_listener.sendRREF(xplane_address!!, "sim/cockpit/switches/EFIS_shows_data[0]", 2)              // DATA, does not exist in XP737 or ZB737?
-
-            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiTerr", 2)                     // TERR, no equivalent in XP737 or ZB737?
-
-            dref_listener.sendRREF(xplane_address!!, "1-sim/ndpanel/1/hsiModeButton", 2)               // CTR FF767, no equivalent state on ZB737 or XP737
-
-            dref_listener.sendRREF(xplane_address!!, "sim/operation/misc/frame_rate_period[0]", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/cockpit2/controls/left_brake_ratio[0]", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/cockpit2/controls/right_brake_ratio[0]", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/cockpit2/controls/parking_brake_ratio[0]", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/cockpit2/controls/speedbrake_ratio[0]", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/warnings/annunciators/reverse[0]", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/flightmodel/position/indicated_airspeed[0]", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/flightmodel/position/y_agl[0]", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/flightmodel/position/elevation[0]", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/cockpit2/gauges/indicators/altitude_ft_pilot[0]", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/cockpit2/controls/flap_handle_deploy_ratio[0]", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/flightmodel/controls/flaprqst[0]", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/flightmodel2/gear/tire_vertical_force_n_mtr[0]", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/flightmodel/forces/g_nrml[0]", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/radios/nav1_dme_dist_m[0]", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/cockpit/radios/nav2_dme_dist_m[0]", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/flightmodel/position/vh_ind_fpm", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/flightmodel/position/latitude", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/flightmodel/position/longitude", 2)
-            dref_listener.sendRREF(xplane_address!!, "sim/graphics/view/view_heading", 2)
-
-            for (i in 0 until landingLightsText.size)
-                dref_listener.sendRREF(xplane_address!!, "sim/cockpit2/switches/landing_lights_switch[$i]", 2)
-            for (i in 0 until genericLightsText.size)
-                dref_listener.sendRREF(xplane_address!!, "sim/cockpit2/switches/generic_lights_switch[$i]", 2)
-
-        }
+        // Open up the UDP listener
+        dref_listener = UDPReceiver(Const.UDP_DREF_PORT, this)
+        xplaneAddress = source
+        xplaneStatus.setText("X-Plane: " + xplaneAddress!!.getHostAddress())
     }
 
     private fun processRREF(name: String, value: Float) {
@@ -686,7 +802,13 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         }
     }
 
-    override fun onReceiveUDP(buffer: ByteArray) {
+    override fun onConnectUDP(ref: UDPReceiver) {
+        // Now that we have a connection, send requests for data now
+        Log.d(Const.TAG, "UDP socket is ready, send requests for data")
+        requestRREF()
+    }
+
+    override fun onReceiveUDP(ref: UDPReceiver, buffer: ByteArray) {
         // Log.d(Const.TAG, "onReceiveUDP bytes=" + buffer.length);
         sequence++
 
@@ -743,8 +865,8 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             while (index < buffer.size) {
                 val id = ByteBuffer.wrap(buffer, index, 4).order(ByteOrder.LITTLE_ENDIAN).int
                 val value = ByteBuffer.wrap(buffer, index+4, 4).order(ByteOrder.LITTLE_ENDIAN).float
-                val name = dref_listener.lookupRREF(id)
-                if (id < dref_listener.rref_base) {
+                val name = dref_listener!!.lookupRREF(id)
+                if (id < dref_listener!!.rref_base) {
                     Log.e(Const.TAG, "#$item, idx=$index: Ignoring invalid id=$id, value=$value less than base ")
                 } else if (name != null) {
                     // Log.d(Const.TAG, "#$item, idx=$index: Parsed RREF with name=$name, id=$id, value=$value")

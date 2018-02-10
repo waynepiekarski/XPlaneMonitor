@@ -44,11 +44,13 @@ class UDPReceiver (port: Int, internal var callback: OnReceiveUDP) {
     @Volatile private var cancelled = false
 
     interface OnReceiveUDP {
-        fun onReceiveUDP(buffer: ByteArray)
+        fun onConnectUDP(ref: UDPReceiver)
+        fun onReceiveUDP(ref: UDPReceiver, buffer: ByteArray)
     }
 
     fun stopListener() {
         cancelled = true
+        socket.close()
     }
 
     fun sendCMND(address: InetAddress, name: String) {
@@ -160,17 +162,32 @@ class UDPReceiver (port: Int, internal var callback: OnReceiveUDP) {
         Log.d(Const.TAG, "Created thread to listen on port " + port)
         thread(start = true) {
             var packetCount = 0
-            Log.d(Const.TAG, "Receiving UDP packets on port " + port)
-            try {
-                socket = DatagramSocket(port)
-                // Only block for 1 second before trying again, allows us to check for if cancelled
-                socket.soTimeout = 1000
-                socket.broadcast = true
+            var created = false
+            Log.d(Const.TAG, "Listening for UDP packets on port " + port)
+            while (!cancelled && !created) {
+                try {
+                    socket = DatagramSocket(port)
+                    // Only block for 1 second before trying again, allows us to check for if cancelled
+                    socket.soTimeout = 1000
+                    socket.broadcast = true
+                    socket.reuseAddress = true
+                    created = true
+                } catch (e: SocketException) {
+                    Log.e(Const.TAG, "Failed to open socket, will retry in 1 second - $e")
+                    Thread.sleep(1000)
+                }
+            }
 
+            Handler(Looper.getMainLooper()).post {
+                callback.onConnectUDP(this)
+            }
+
+            try {
+                Log.d(Const.TAG, "Socket is created, waiting for incoming UDP packets")
                 val buffer = ByteArray(64 * 1024) // UDP maximum is 64kb
                 val packet = DatagramPacket(buffer, buffer.size)
                 while (!cancelled) {
-                    // Log.d(Const.TAG, "Waiting for UDP packet on port " + port + " with maximum size " + buffer.length);
+                    // Log.d(Const.TAG, "Waiting for UDP packet on port " + port + " with maximum size " + buffer.size)
                     try {
                         socket.receive(packet)
                         packetCount++
@@ -179,7 +196,7 @@ class UDPReceiver (port: Int, internal var callback: OnReceiveUDP) {
                         // Log.d(Const.TAG, "Txt dump = [" + bytesToChars(packet.getData(), packet.getLength()) + "]");
                         val data = Arrays.copyOfRange(buffer, 0, packet.length)
                         Handler(Looper.getMainLooper()).post {
-                            callback.onReceiveUDP(data)
+                            callback.onReceiveUDP(this, data)
                         }
 
                     } catch (e: SocketTimeoutException) {

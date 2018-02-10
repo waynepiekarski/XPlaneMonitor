@@ -23,7 +23,7 @@
             android:textAlignment="center" />
 
         <TextView
-            android:id="@+id/xplaneHost"
+            android:id="@+id/xplaneStatus"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -49,6 +49,14 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:src="@mipmap/ic_launcher" />
+
+        <Button
+            android:id="@+id/switchDetectButton"
+            style="@android:style/Widget.Button.Small"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Detect" />
 
         <Button
             android:id="@+id/switchMainButton"
