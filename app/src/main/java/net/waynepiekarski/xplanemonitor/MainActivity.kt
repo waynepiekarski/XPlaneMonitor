@@ -31,6 +31,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.text.InputType
 import android.util.Log
 import android.view.View
 import android.widget.Button
@@ -369,6 +370,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
 
         val input = EditText(this)
         input.setText(manualAddress)
+        input.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS)
         builder.setView(input)
         builder.setPositiveButton("Manual Override") { dialog, which -> changeManualHostname(input.text.toString()) }
         builder.setNegativeButton("Revert") { dialog, which -> dialog.cancel() }
