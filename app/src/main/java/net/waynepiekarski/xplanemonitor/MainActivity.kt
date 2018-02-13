@@ -116,8 +116,8 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         }
         simulateButton.setOnClickListener {
             Log.d(Const.TAG, "Simulating some data")
-            onReceiveUDP(dref_listener!!, sample_groundspeed)
-            onReceiveUDP(dref_listener!!, sample_data)
+            processUDP(sample_groundspeed)
+            processUDP(sample_data)
 
             Log.d(Const.TAG, "Processing res/raw/xplane_dump.raw file")
             val stream = resources.openRawResource(R.raw.xplane_dump)
@@ -128,7 +128,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
                     val len = stream.read(packet)
                     if (len != packet.size)
                         break
-                    onReceiveUDP(dref_listener!!, packet)
+                    processUDP(packet)
                     count++
                 }
                 Log.d(Const.TAG, "Finished processing rew/raw/xplane_dump.raw with $count packets")
@@ -814,8 +814,11 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
 
     override fun onReceiveUDP(ref: UDPReceiver, buffer: ByteArray) {
         // Log.d(Const.TAG, "onReceiveUDP bytes=" + buffer.length);
-        sequence++
+        processUDP(buffer)
+    }
 
+    fun processUDP(buffer: ByteArray) {
+        sequence++
         if (buffer.size >= 5 && buffer[0] == 'D'.toByte() && buffer[1] == 'R'.toByte() && buffer[2] == 'E'.toByte() && buffer[3] == 'F'.toByte()) {
             // Handle DREF+ packet type here
             // ["DREF+"=5bytes] [float=4bytes] ["label/name/var[0]\0"=remaining_bytes]
