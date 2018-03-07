@@ -305,6 +305,7 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             googleMap = map
             val pos = LatLng(0.0, 0.0) // Move the map to a default origin
             googleMap.moveCamera(CameraUpdateFactory.newLatLng(pos))
+            googleMap.moveCamera(CameraUpdateFactory.zoomTo(10.0f))
         }
     }
 
