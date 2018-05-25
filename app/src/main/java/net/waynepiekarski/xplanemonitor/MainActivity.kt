@@ -92,6 +92,8 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
     internal var efis_mode_state = 0
     internal var efis_range_state = 0
 
+    internal var max_allowable_altitude_ft = 0
+
 
     override fun onConfigurationChanged(config: Configuration) {
         Log.d(Const.TAG, "onConfigurationChanged")
@@ -294,6 +296,30 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             }
             genericLightsText[i] = t
         }
+
+        button_to_cmnd(window_heat_l_side, "laminar/B738/toggle_switch/window_heat_l_side")
+        button_to_cmnd(window_heat_r_side, "laminar/B738/toggle_switch/window_heat_r_side")
+        button_to_cmnd(window_heat_l_fwd, "laminar/B738/toggle_switch/window_heat_l_fwd")
+        button_to_cmnd(window_heat_r_fwd, "laminar/B738/toggle_switch/window_heat_r_fwd")
+        button_to_cmnd(capt_probes_pos, "laminar/B738/toggle_switch/capt_probes_pos")
+        button_to_cmnd(fo_probes_pos,   "laminar/B738/toggle_switch/fo_probes_pos")
+        flt_alt_dn.setOnClickListener {
+            max_allowable_altitude_ft -= 5000
+            if (max_allowable_altitude_ft < 0) max_allowable_altitude_ft = 0
+            check_thread(xplaneAddress, "Change maximum altitude to $max_allowable_altitude_ft") {
+                dref_listener!!.sendDREF(xplaneAddress!!, "sim/cockpit2/pressurization/actuators/max_allowable_altitude_ft", max_allowable_altitude_ft.toFloat())
+            }
+        }
+        flt_alt_up.setOnClickListener {
+            max_allowable_altitude_ft += 5000
+            if (max_allowable_altitude_ft > 45000) max_allowable_altitude_ft = 45000
+            check_thread(xplaneAddress, "Change maximum altitude to $max_allowable_altitude_ft") {
+                dref_listener!!.sendDREF(xplaneAddress!!, "sim/cockpit2/pressurization/actuators/max_allowable_altitude_ft", max_allowable_altitude_ft.toFloat())
+            }
+        }
+        button_to_cmnd(seatbelt_sign_up, "laminar/B738/toggle_switch/seatbelt_sign_up")
+        button_to_cmnd(seatbelt_sign_dn, "laminar/B738/toggle_switch/seatbelt_sign_dn")
+        button_to_cmnd(attend, "laminar/B738/push_button/attend")
 
         // Reset display elements to a known state
         resetIndicators()
@@ -599,6 +625,15 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
                 dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit2/switches/landing_lights_switch[$i]", 2)
             for (i in 0 until genericLightsText.size)
                 dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit2/switches/generic_lights_switch[$i]", 2)
+
+            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/ice/window_heat_l_fwd_pos", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/ice/window_heat_r_fwd_pos", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/ice/window_heat_l_side_pos", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/ice/window_heat_r_side_pos", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/toggle_switch/capt_probes_pos", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/toggle_switch/fo_probes_pos", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit2/pressurization/actuators/max_allowable_altitude_ft", 2)
+            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/toggle_switch/seatbelt_sign_pos", 2)
         }
     }
 
@@ -802,6 +837,29 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             // TODO: Note that sim/cockpit/switches/EFIS_shows_terrain[0] does not seem to exist in XP737, except it should
             // TODO: mirror_xhsi_value()
             efis_button_terr.setState(value)
+        } else if (name == "laminar/B738/ice/window_heat_l_fwd_pos") {
+            window_heat_l_fwd.setState(value)
+        } else if (name == "laminar/B738/ice/window_heat_r_fwd_pos") {
+            window_heat_r_fwd.setState(value)
+        } else if (name == "laminar/B738/ice/window_heat_l_side_pos") {
+            window_heat_l_side.setState(value)
+        } else if (name == "laminar/B738/ice/window_heat_r_side_pos") {
+            window_heat_r_side.setState(value)
+        } else if (name == "laminar/B738/toggle_switch/capt_probes_pos") {
+            capt_probes_pos.setState(value)
+        } else if (name == "laminar/B738/toggle_switch/fo_probes_pos") {
+            fo_probes_pos.setState(value)
+        } else if (name == "sim/cockpit2/pressurization/actuators/max_allowable_altitude_ft") {
+            flt_alt_actual.text = "FL" + value.toInt() / 1000
+        } else if (name == "laminar/B738/toggle_switch/seatbelt_sign_pos") {
+            if (value.toInt() == 0)
+                seatbelt_sign.text = "SB-Off"
+            else if (value.toInt() == 1)
+                seatbelt_sign.text = "SB-Auto"
+            else if (value.toInt() == 2)
+                seatbelt_sign.text = "SB-On"
+            else
+                seatbelt_sign.text = "n/a"
         } else {
             Log.e(Const.TAG, "Unhandled RREF name=$name, value=$value")
         }

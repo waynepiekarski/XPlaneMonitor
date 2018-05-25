@@ -428,8 +428,133 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="TERR" />
+        </LinearLayout>
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
 
+            <net.waynepiekarski.xplanemonitor.XButton
+                android:id="@+id/window_heat_l_side"
+                style="@android:style/Widget.Button.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="0"
+                android:singleLine="true"
+                android:text="HLS" />
+
+            <net.waynepiekarski.xplanemonitor.XButton
+                android:id="@+id/window_heat_l_fwd"
+                style="@android:style/Widget.Button.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="0"
+                android:singleLine="true"
+                android:text="HLF" />
+
+            <net.waynepiekarski.xplanemonitor.XButton
+                android:id="@+id/window_heat_r_fwd"
+                style="@android:style/Widget.Button.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="0"
+                android:singleLine="true"
+                android:text="HRF" />
+
+            <net.waynepiekarski.xplanemonitor.XButton
+                android:id="@+id/window_heat_r_side"
+                style="@android:style/Widget.Button.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="0"
+                android:singleLine="true"
+                android:text="HRS" />
+
+            <net.waynepiekarski.xplanemonitor.XButton
+                android:id="@+id/capt_probes_pos"
+                style="@android:style/Widget.Button.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="0"
+                android:singleLine="true"
+                android:text="CPrb" />
+
+            <net.waynepiekarski.xplanemonitor.XButton
+                android:id="@+id/fo_probes_pos"
+                style="@android:style/Widget.Button.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="0"
+                android:singleLine="true"
+                android:text="FOPrb" />
+
+            <Button
+                android:id="@+id/flt_alt_up"
+                style="@android:style/Widget.Button.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:layout_weight="1"
+                android:text="+" />
+
+            <Button
+                android:id="@+id/flt_alt_actual"
+                style="@android:style/Widget.Button.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:layout_weight="0"
+                android:text="n/a" />
+
+            <Button
+                android:id="@+id/flt_alt_dn"
+                style="@android:style/Widget.Button.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:layout_weight="1"
+                android:text="-" />
+
+            <Button
+                android:id="@+id/seatbelt_sign_up"
+                style="@android:style/Widget.Button.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:layout_weight="1"
+                android:singleLine="true"
+                android:text="-" />
+
+            <Button
+                android:id="@+id/seatbelt_sign"
+                style="@android:style/Widget.Button.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:layout_weight="0"
+                android:singleLine="true"
+                android:text="n/a" />
+
+            <Button
+                android:id="@+id/seatbelt_sign_dn"
+                style="@android:style/Widget.Button.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:layout_weight="1"
+                android:singleLine="true"
+                android:text="+" />
+
+            <Button
+                android:id="@+id/attend"
+                style="@android:style/Widget.Button.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:layout_weight="0"
+                android:singleLine="true"
+                android:text="Att" />
         </LinearLayout>
 
         <net.waynepiekarski.xplanemonitor.BarView
