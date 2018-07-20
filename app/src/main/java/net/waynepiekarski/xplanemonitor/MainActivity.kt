@@ -62,7 +62,6 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
     private var connectShutdown = false
     private var connectFailures = 0
 
-    internal var sequence = 0
     internal var fourDecimal = DecimalFormat("0.0000")
     internal var oneDecimal = DecimalFormat("0.0")
     internal var zeroDecimal = DecimalFormat("#")
@@ -166,7 +165,7 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
             var rewrite = efis_mode_next
             if (rewrite == 3)
                 rewrite = 4
-            sendChange(tcp_extplane, "sim/cockpit/switches/EFIS_map_submode[0]", rewrite.toFloat()) // FF767
+            sendChange(tcp_extplane, "sim/cockpit/switches/EFIS_map_submode", rewrite.toFloat()) // FF767
             sendChange(tcp_extplane, "laminar/B738/EFIS_control/capt/map_mode_pos", efis_mode_state.toFloat()) // ZB737
         }
 
@@ -180,7 +179,7 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
             efis_range_state = efis_range_next
             Log.d(Const.TAG, "Change EFIS range with direction $dir to $efis_range_next from $efis_range_prev")
             sendChange(tcp_extplane, "1-sim/ndpanel/1/hsiRangeRotary", efis_range_state.toFloat())                  // FF767
-            sendChange(tcp_extplane, "sim/cockpit/switches/EFIS_map_range_selector[0]", efis_range_state.toFloat()) // XP737
+            sendChange(tcp_extplane, "sim/cockpit/switches/EFIS_map_range_selector", efis_range_state.toFloat()) // XP737
             if (dir > 0)
                 sendCommand(tcp_extplane, "laminar/B738/EFIS_control/capt/map_range_up") // ZB737
             else
@@ -380,6 +379,7 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
         doBgThread {
             if ((tcpRef != null) && (tcpRef == tcp_extplane) && connectWorking) {
                 tcpRef.writeln("sub $request")
+                Log.d(Const.TAG, "sendRequest: sub $request")
             } else {
                 Log.d(Const.TAG, "Ignoring request for $request since TCP connection is not available")
             }
@@ -390,7 +390,8 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
         // Send the request on a separate thread
         doBgThread {
             if ((tcpRef != null) && (tcpRef == tcp_extplane) && connectWorking) {
-                tcpRef.writeln("sub $dref")
+                tcpRef.writeln("set $dref $value")
+                Log.d(Const.TAG, "sendChange: set $dref $value")
             } else {
                 Log.d(Const.TAG, "Ignoring request for $dref since TCP connection is not available")
             }
@@ -557,8 +558,15 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
                 // Everything is working with actual data coming back.
                 // This is the last time we can put debug text on the CDU before it is overwritten
                 connectFailures = 0
-                setConnectionStatus("X-Plane CDU starting", "Check aircraft type", "Must be Zibo 738", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
+                setConnectionStatus("X-Plane CDU starting", "Check aircraft type", "Must find acf_tailnum", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
                 connectWorking = true
+            }
+
+            // If this is the first time we found a Zibo CDU dataref, then update the UI, this is the final step!
+            // TODO: This code should run when we receive a Zibo-specific dataref
+            if (!connectZibo) {
+                setConnectionStatus("X-Plane CDU working", "", "", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
+                connectZibo = true
             }
 
             val tokens = line.split(" ")
@@ -568,13 +576,6 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
                 val fixed = decoded.replace('`','\u00B0').replace('*','\u25CA')
 
                 Log.d(Const.TAG, "Decoded byte array for name [${tokens[1]}] with string [$decoded]")
-
-                // If this is the first time we found a Zibo CDU dataref, then update the UI, this is the final step!
-                // TODO: This code should run when we receive a Zibo-specific dataref
-                if (!connectZibo) {
-                    setConnectionStatus("X-Plane CDU working", "", "", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
-                    connectZibo = true
-                }
 
                 // We have received acf_tailnum, so the aircraft has changed, and this will indicate if it is a Zibo-variant aircraft
                 if (tokens[1] == "sim/aircraft/view/acf_tailnum") {
@@ -606,7 +607,7 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
                 } else {
                     Log.d(Const.TAG, "Found unused result name [${tokens[1]}] with string [$fixed]")
                 }
-            } else if ((tokens[0] == "ud") || (tokens[0] == "uf")){
+            } else if ((tokens[0] == "ud") || (tokens[0] == "uf") || (tokens[0] == "ui")) {
                 val number = tokens[2].toFloat()
                 Log.d(Const.TAG, "Decoded number for name [${tokens[1]}] with value [$number]")
                 processFloat(tokens[1], number)
@@ -703,57 +704,57 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
     private fun requestDatarefs() {
         // Request values that we are interested in getting updates for
         Log.d(Const.TAG, "Requesting values via RREF")
-        sendRequest(tcp_extplane, "sim/cockpit/switches/EFIS_map_submode[0]")        // Map XP737
+        sendRequest(tcp_extplane, "sim/cockpit/switches/EFIS_map_submode")        // Map XP737
         sendRequest(tcp_extplane, "1-sim/ndpanel/1/hsiModeRotary")                   // Map FF767
         sendRequest(tcp_extplane, "laminar/B738/EFIS_control/capt/map_mode_pos")     // Map ZB737
 
-        sendRequest(tcp_extplane, "sim/cockpit/switches/EFIS_map_range_selector[0]") // Range XP737
+        sendRequest(tcp_extplane, "sim/cockpit/switches/EFIS_map_range_selector") // Range XP737
         sendRequest(tcp_extplane, "laminar/B738/EFIS/capt/map_range")                // Range ZB737
         sendRequest(tcp_extplane, "1-sim/ndpanel/1/hsiRangeRotary")                  // Range FF767
 
-        sendRequest(tcp_extplane, "sim/cockpit/switches/EFIS_shows_tcas[0]")      // TFC XP737
+        sendRequest(tcp_extplane, "sim/cockpit/switches/EFIS_shows_tcas")      // TFC XP737
         sendRequest(tcp_extplane, "1-sim/ndpanel/1/hsiRangeButton")               // TFC FF767
 
-        sendRequest(tcp_extplane, "sim/cockpit/switches/EFIS_shows_airports[0]")  // ARPT XP737
+        sendRequest(tcp_extplane, "sim/cockpit/switches/EFIS_shows_airports")  // ARPT XP737
         sendRequest(tcp_extplane, "laminar/B738/EFIS/EFIS_airport_on")            // ARPT ZB737
         sendRequest(tcp_extplane, "1-sim/ndpanel/1/map3")                         // ARPT FF767
 
-        sendRequest(tcp_extplane, "sim/cockpit/switches/EFIS_shows_waypoints[0]") // WPT XP737
+        sendRequest(tcp_extplane, "sim/cockpit/switches/EFIS_shows_waypoints") // WPT XP737
         sendRequest(tcp_extplane, "laminar/B738/EFIS/EFIS_fix_on")                // WPT ZB737
         sendRequest(tcp_extplane, "1-sim/ndpanel/1/map5")                         // WPT FF767
 
-        sendRequest(tcp_extplane, "sim/cockpit/switches/EFIS_shows_VORs[0]")      // STA XP737
+        sendRequest(tcp_extplane, "sim/cockpit/switches/EFIS_shows_VORs")      // STA XP737
         sendRequest(tcp_extplane, "laminar/B738/EFIS/EFIS_vor_on")                // STA ZB737
         sendRequest(tcp_extplane, "1-sim/ndpanel/1/map2")                         // STA FF767
 
-        sendRequest(tcp_extplane, "sim/cockpit/switches/EFIS_shows_weather[0]")   // WXR XP737
+        sendRequest(tcp_extplane, "sim/cockpit/switches/EFIS_shows_weather")   // WXR XP737
         sendRequest(tcp_extplane, "laminar/B738/EFIS/EFIS_wx_on")                 // WXR ZB737
-        // No need for this since EFIS_shows_weather[0] seems to pass this on
+        // No need for this since EFIS_shows_weather seems to pass this on
         // sendRequest(tcp_extplane, "1-sim/ndpanel/1/hsiWxr") // WXR
 
         sendRequest(tcp_extplane, "1-sim/ndpanel/1/map4")                         // DATA FF767
-        // sendRequest(tcp_extplane, "sim/cockpit/switches/EFIS_shows_data[0]")           // DATA, does not exist in XP737 or ZB737?
+        // sendRequest(tcp_extplane, "sim/cockpit/switches/EFIS_shows_data")           // DATA, does not exist in XP737 or ZB737?
 
         sendRequest(tcp_extplane, "1-sim/ndpanel/1/hsiTerr")                      // TERR, no equivalent in XP737 or ZB737?
 
         sendRequest(tcp_extplane, "1-sim/ndpanel/1/hsiModeButton")                // CTR FF767, no equivalent state on ZB737 or XP737
 
-        sendRequest(tcp_extplane, "sim/operation/misc/frame_rate_period[0]")
-        sendRequest(tcp_extplane, "sim/cockpit2/controls/left_brake_ratio[0]")
-        sendRequest(tcp_extplane, "sim/cockpit2/controls/right_brake_ratio[0]")
-        sendRequest(tcp_extplane, "sim/cockpit2/controls/parking_brake_ratio[0]")
-        sendRequest(tcp_extplane, "sim/cockpit2/controls/speedbrake_ratio[0]")
-        sendRequest(tcp_extplane, "sim/cockpit/warnings/annunciators/reverse[0]")
-        sendRequest(tcp_extplane, "sim/flightmodel/position/indicated_airspeed[0]")
-        sendRequest(tcp_extplane, "sim/flightmodel/position/y_agl[0]")
-        sendRequest(tcp_extplane, "sim/flightmodel/position/elevation[0]")
-        sendRequest(tcp_extplane, "sim/cockpit2/gauges/indicators/altitude_ft_pilot[0]")
-        sendRequest(tcp_extplane, "sim/cockpit2/controls/flap_handle_deploy_ratio[0]")
-        sendRequest(tcp_extplane, "sim/flightmodel/controls/flaprqst[0]")
-        sendRequest(tcp_extplane, "sim/flightmodel2/gear/tire_vertical_force_n_mtr[0]")
-        sendRequest(tcp_extplane, "sim/flightmodel/forces/g_nrml[0]")
-        sendRequest(tcp_extplane, "sim/cockpit/radios/nav1_dme_dist_m[0]")
-        sendRequest(tcp_extplane, "sim/cockpit/radios/nav2_dme_dist_m[0]")
+        sendRequest(tcp_extplane, "sim/operation/misc/frame_rate_period")
+        sendRequest(tcp_extplane, "sim/cockpit2/controls/left_brake_ratio")
+        sendRequest(tcp_extplane, "sim/cockpit2/controls/right_brake_ratio")
+        sendRequest(tcp_extplane, "sim/cockpit2/controls/parking_brake_ratio")
+        sendRequest(tcp_extplane, "sim/cockpit2/controls/speedbrake_ratio")
+        sendRequest(tcp_extplane, "sim/cockpit/warnings/annunciators/reverse")
+        sendRequest(tcp_extplane, "sim/flightmodel/position/indicated_airspeed")
+        sendRequest(tcp_extplane, "sim/flightmodel/position/y_agl")
+        sendRequest(tcp_extplane, "sim/flightmodel/position/elevation")
+        sendRequest(tcp_extplane, "sim/cockpit2/gauges/indicators/altitude_ft_pilot")
+        sendRequest(tcp_extplane, "sim/cockpit2/controls/flap_handle_deploy_ratio")
+        sendRequest(tcp_extplane, "sim/flightmodel/controls/flaprqst")
+        sendRequest(tcp_extplane, "sim/flightmodel2/gear/tire_vertical_force_n_mtr")
+        sendRequest(tcp_extplane, "sim/flightmodel/forces/g_nrml")
+        sendRequest(tcp_extplane, "sim/cockpit/radios/nav1_dme_dist_m")
+        sendRequest(tcp_extplane, "sim/cockpit/radios/nav2_dme_dist_m")
         sendRequest(tcp_extplane, "sim/flightmodel/position/vh_ind_fpm")
         sendRequest(tcp_extplane, "sim/flightmodel/position/latitude")
         sendRequest(tcp_extplane, "sim/flightmodel/position/longitude")
@@ -775,7 +776,7 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
     }
 
     private fun processFloat(name: String, value: Float) {
-        if (name == "sim/operation/misc/frame_rate_period[0]") {
+        if (name == "sim/operation/misc/frame_rate_period") {
             if (value < 0.0001) {
                 itemFPS.text = "FPS\nn/a"
                 itemFPS.setBackgroundColor(Color.GRAY)
@@ -783,15 +784,15 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
                 itemFPS.text = "FPS\n" + oneDecimal.format((1.0f / value).toDouble())
                 itemFPS.setBackgroundColor(Color.GREEN)
             }
-        } else if (name == "sim/cockpit2/controls/left_brake_ratio[0]") {
+        } else if (name == "sim/cockpit2/controls/left_brake_ratio") {
             setBrakePercent(itemLeftBrake, "Left Brake", value)
-        } else if (name == "sim/cockpit2/controls/right_brake_ratio[0]") {
+        } else if (name == "sim/cockpit2/controls/right_brake_ratio") {
             setBrakePercent(itemRightBrake, "Right Brake", value)
-        } else if (name == "sim/cockpit2/controls/parking_brake_ratio[0]") {
+        } else if (name == "sim/cockpit2/controls/parking_brake_ratio") {
             setBrakePercent(itemParkingBrake, "Parking Brake", value)
-        } else if (name == "sim/cockpit2/controls/speedbrake_ratio[0]") {
+        } else if (name == "sim/cockpit2/controls/speedbrake_ratio") {
             setBrakePercent(itemSpeedBrake, "Speed Brake (Air)", value)
-        } else if (name == "sim/cockpit/warnings/annunciators/reverse[0]") {
+        } else if (name == "sim/cockpit/warnings/annunciators/reverse") {
             val bits = value.toInt()
             var engines = ""
             if (bits and 1 == 1) engines += "1"
@@ -799,35 +800,35 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
             if (bits and 4 == 4) engines += "3"
             if (bits and 8 == 8) engines += "4"
             setItemString(itemReverseThrust, "Thrust Direction", if (bits != 0) "REVERSE " + engines else "All Forward", bits != 0)
-        } else if (name == "sim/flightmodel/position/indicated_airspeed[0]") {
+        } else if (name == "sim/flightmodel/position/indicated_airspeed") {
             setItemString(itemIndicatedSpeed, "Indicated Air Speed", oneDecimal.format(value.toDouble()) + "kts", false)
             globalAirspeed = value
             setGlideEstimate(globalNav1Distance, globalAirspeed, globalAltitude)
-        } else if (name == "sim/flightmodel/position/y_agl[0]") {
+        } else if (name == "sim/flightmodel/position/y_agl") {
             setItemString(itemAltitudeGround, "Altitude AGL", oneDecimal.format((value * Const.METERS_TO_FEET).toDouble()) + "ft", false)
-        } else if (name == "sim/flightmodel/position/elevation[0]") {
+        } else if (name == "sim/flightmodel/position/elevation") {
             setItemString(itemAltitudeMSL, "Altitude MSL", oneDecimal.format((value * Const.METERS_TO_FEET).toDouble()) + "ft", false)
             globalAltitude = value * Const.METERS_TO_FEET
             setGlideEstimate(globalNav1Distance, globalAirspeed, globalAltitude)
-        } else if (name == "sim/cockpit2/gauges/indicators/altitude_ft_pilot[0]") {
+        } else if (name == "sim/cockpit2/gauges/indicators/altitude_ft_pilot") {
             setItemString(itemAltitudeGauge, "Altitude Gauge", oneDecimal.format(value.toDouble()) + "ft", false)
-        } else if (name == "sim/cockpit2/controls/flap_handle_deploy_ratio[0]") {
+        } else if (name == "sim/cockpit2/controls/flap_handle_deploy_ratio") {
             lastFlapsActual = zeroDecimal.format((40 * value).toDouble())
             setItemString(itemFlapsActual, "Flaps Actual", lastFlapsActual, lastFlapsActual != lastFlapsDesired)
-        } else if (name == "sim/flightmodel/controls/flaprqst[0]") {
+        } else if (name == "sim/flightmodel/controls/flaprqst") {
             lastFlapsDesired = zeroDecimal.format((40 * value).toDouble())
             setItemString(itemFlapsDesired, "Flaps Desired", lastFlapsDesired, value > 0.01)
-        } else if (name == "sim/flightmodel2/gear/tire_vertical_force_n_mtr[0]") {
+        } else if (name == "sim/flightmodel2/gear/tire_vertical_force_n_mtr") {
             setItemString(itemForceGear, "Gear Force", oneDecimal.format(value.toDouble()) + "Nm", false)
-        } else if (name == "sim/flightmodel/forces/g_nrml[0]") {
+        } else if (name == "sim/flightmodel/forces/g_nrml") {
             setItemString(itemForceVertical, "Vert Force", oneDecimal.format(value.toDouble()) + "G", value < 0.75 || value > 1.25)
             graphForceVertical.set1Value(value - 1.0) // Center around 1G
             barForceVertical.setValue(value - 1.0)
-        } else if (name == "sim/cockpit/radios/nav1_dme_dist_m[0]") {
+        } else if (name == "sim/cockpit/radios/nav1_dme_dist_m") {
             setItemString(itemDME1Distance, "NAV1 DME", oneDecimal.format(value.toDouble()) + "Nm", false)
             globalNav1Distance = value
             setGlideEstimate(globalNav1Distance, globalAirspeed, globalAltitude)
-        } else if (name == "sim/cockpit/radios/nav2_dme_dist_m[0]") {
+        } else if (name == "sim/cockpit/radios/nav2_dme_dist_m") {
             setItemString(itemDME2Distance, "NAV2 DME", oneDecimal.format(value.toDouble()) + "Nm", false)
         } else if (name == "sim/flightmodel/position/vh_ind_fpm") {
             setItemString(itemActualFPM, "Actual FPM", oneDecimal.format(value.toDouble()) + "fpm", value < -3000 || value > 3000)
@@ -879,7 +880,7 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
                 mode = "N/A"
             efis_mode_change.text = "EFIS " + mode
             efis_mode_state = value.toInt()
-        } else if (name == "sim/cockpit/switches/EFIS_map_submode[0]") {
+        } else if (name == "sim/cockpit/switches/EFIS_map_submode") {
             val mode: String
             if (value.toInt() == 0)
                 mode = "APP"
@@ -896,7 +897,7 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
             if (efis_mode_state == 4)
                 efis_mode_state = 3
         } else if (name == "1-sim/ndpanel/1/hsiModeRotary") {
-            mirror_xhsi_value(name, "1-sim/ndpanel/1/hsiModeRotary", "sim/cockpit/switches/EFIS_map_submode[0]", if (value.toInt() == 3) 4.0f else value)
+            mirror_xhsi_value(name, "1-sim/ndpanel/1/hsiModeRotary", "sim/cockpit/switches/EFIS_map_submode", if (value.toInt() == 3) 4.0f else value)
             val mode: String
             if (value.toInt() == 0)
                 mode = "VOR"
@@ -910,8 +911,8 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
                 mode = "N/A"
             efis_mode_state = value.toInt()
             efis_mode_change.text = "EFIS " + mode
-        } else if (name == "sim/cockpit/switches/EFIS_map_range_selector[0]" || name == "1-sim/ndpanel/1/hsiRangeRotary") {
-            mirror_xhsi_value(name, "1-sim/ndpanel/1/hsiRangeRotary", "sim/cockpit/switches/EFIS_map_range_selector[0]", value)
+        } else if (name == "sim/cockpit/switches/EFIS_map_range_selector" || name == "1-sim/ndpanel/1/hsiRangeRotary") {
+            mirror_xhsi_value(name, "1-sim/ndpanel/1/hsiRangeRotary", "sim/cockpit/switches/EFIS_map_range_selector", value)
             val range = (1 shl value.toInt()) * 10
             map_zoom_range.text = "" + range + "nm"
             efis_range_state = value.toInt()
@@ -919,31 +920,31 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
             val range = (1 shl value.toInt()) * 5
             map_zoom_range.text = "" + range + "nm"
             efis_range_state = value.toInt()
-        } else if (name == "sim/cockpit/switches/EFIS_shows_tcas[0]" || name == "1-sim/ndpanel/1/hsiRangeButton") {
-            mirror_xhsi_value(name, "1-sim/ndpanel/1/hsiRangeButton", "sim/cockpit/switches/EFIS_shows_tcas[0]", value)
+        } else if (name == "sim/cockpit/switches/EFIS_shows_tcas" || name == "1-sim/ndpanel/1/hsiRangeButton") {
+            mirror_xhsi_value(name, "1-sim/ndpanel/1/hsiRangeButton", "sim/cockpit/switches/EFIS_shows_tcas", value)
             efis_button_tfc.setState(value)
         } else if (name == "1-sim/ndpanel/1/hsiModeButton") { // No equivalent for ZB737 or XP737
             // hsiModeButton seems to either never change, or always go 0->1->0 very quickly, so perhaps it can never be set in FF767
-            mirror_xhsi_value(name, "1-sim/ndpanel/1/hsiModeButton", "sim/cockpit/switches/EFIS_shows_ctr_TODO[0]", value)
+            mirror_xhsi_value(name, "1-sim/ndpanel/1/hsiModeButton", "sim/cockpit/switches/EFIS_shows_ctr_TODO", value)
             efis_button_ctr.setState(value)
-        } else if (name == "sim/cockpit/switches/EFIS_shows_airports[0]" || name == "1-sim/ndpanel/1/map3" || name == "laminar/B738/EFIS/EFIS_airport_on") {
-            mirror_xhsi_value(name, "1-sim/ndpanel/1/map3", "sim/cockpit/switches/EFIS_shows_airports[0]", value)
+        } else if (name == "sim/cockpit/switches/EFIS_shows_airports" || name == "1-sim/ndpanel/1/map3" || name == "laminar/B738/EFIS/EFIS_airport_on") {
+            mirror_xhsi_value(name, "1-sim/ndpanel/1/map3", "sim/cockpit/switches/EFIS_shows_airports", value)
             efis_button_arpt.setState(value)
-        } else if (name == "sim/cockpit/switches/EFIS_shows_waypoints[0]" || name == "1-sim/ndpanel/1/map5" || name == "laminar/B738/EFIS/EFIS_fix_on") {
-            mirror_xhsi_value(name, "1-sim/ndpanel/1/map5", "sim/cockpit/switches/EFIS_shows_waypoints[0]", value)
+        } else if (name == "sim/cockpit/switches/EFIS_shows_waypoints" || name == "1-sim/ndpanel/1/map5" || name == "laminar/B738/EFIS/EFIS_fix_on") {
+            mirror_xhsi_value(name, "1-sim/ndpanel/1/map5", "sim/cockpit/switches/EFIS_shows_waypoints", value)
             efis_button_wpt.setState(value)
-        } else if (name == "sim/cockpit/switches/EFIS_shows_VORs[0]" || name == "1-sim/ndpanel/1/map2" || name == "laminar/B738/EFIS/EFIS_vor_on") {
-            mirror_xhsi_value(name, "1-sim/ndpanel/1/map2", "sim/cockpit/switches/EFIS_shows_VORs[0]", value)
+        } else if (name == "sim/cockpit/switches/EFIS_shows_VORs" || name == "1-sim/ndpanel/1/map2" || name == "laminar/B738/EFIS/EFIS_vor_on") {
+            mirror_xhsi_value(name, "1-sim/ndpanel/1/map2", "sim/cockpit/switches/EFIS_shows_VORs", value)
             efis_button_sta.setState(value)
-        } else if (name == "sim/cockpit/switches/EFIS_shows_data[0]" || name == "1-sim/ndpanel/1/map4") {
-            // TODO: Note that sim/cockpit/switches/EFIS_shows_data[0] does not seem to exist in XP737, except it should
+        } else if (name == "sim/cockpit/switches/EFIS_shows_data" || name == "1-sim/ndpanel/1/map4") {
+            // TODO: Note that sim/cockpit/switches/EFIS_shows_data does not seem to exist in XP737, except it should
             // TODO: mirror_xhsi_value()
             efis_button_data.setState(value)
-        } else if (name == "sim/cockpit/switches/EFIS_shows_weather[0]" || name == "1-sim/ndpanel/1/hsiWxr" || name == "laminar/B738/EFIS/EFIS_wx_on") {
-            mirror_xhsi_value(name, "1-sim/ndpanel/1/hsiWxr", "sim/cockpit/switches/EFIS_shows_weather[0]", value)
+        } else if (name == "sim/cockpit/switches/EFIS_shows_weather" || name == "1-sim/ndpanel/1/hsiWxr" || name == "laminar/B738/EFIS/EFIS_wx_on") {
+            mirror_xhsi_value(name, "1-sim/ndpanel/1/hsiWxr", "sim/cockpit/switches/EFIS_shows_weather", value)
             efis_button_wxr.setState(value)
-        } else if (name == "sim/cockpit/switches/EFIS_shows_terrain[0]" || name == "1-sim/ndpanel/1/hsiTerr") {
-            // TODO: Note that sim/cockpit/switches/EFIS_shows_terrain[0] does not seem to exist in XP737, except it should
+        } else if (name == "sim/cockpit/switches/EFIS_shows_terrain" || name == "1-sim/ndpanel/1/hsiTerr") {
+            // TODO: Note that sim/cockpit/switches/EFIS_shows_terrain does not seem to exist in XP737, except it should
             // TODO: mirror_xhsi_value()
             efis_button_terr.setState(value)
         } else if (name == "laminar/B738/ice/window_heat_l_fwd_pos") {
@@ -970,7 +971,7 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
             else
                 seatbelt_sign.text = "n/a"
         } else {
-            Log.e(Const.TAG, "Unhandled RREF name=$name, value=$value")
+            Log.e(Const.TAG, "Unhandled dataref name=$name, value=$value")
         }
     }
 
