@@ -27,11 +27,9 @@ import android.app.AlertDialog
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
-import android.os.Build
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
+import android.os.*
 import android.text.InputType
+import android.util.Base64
 import android.util.Log
 import android.view.View
 import android.widget.Button
@@ -46,26 +44,24 @@ import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import kotlinx.android.synthetic.main.activity_main.*
 
-import java.io.IOException
 import java.net.InetAddress
 import java.net.UnknownHostException
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import java.text.DecimalFormat
-import java.util.TreeMap
 import kotlin.concurrent.thread
 
-class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnReceiveMulticast {
+class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnReceiveMulticast {
 
-    internal var xplaneAddress: InetAddress? = null
-    internal var dref_listener: UDPReceiver? = null
-    internal var becn_listener: MulticastReceiver? = null
+    private var becn_listener: MulticastReceiver? = null
+    private var tcp_extplane: TCPClient? = null
+    private var connectAddress: String? = null
     private var manualAddress: String = ""
     private var manualInetAddress: InetAddress? = null
+    private var connectZibo = false
+    private var connectActTailnum: String = ""
+    private var connectWorking = false
     private var connectShutdown = false
+    private var connectFailures = 0
 
-    internal var mapDREF = TreeMap<String, Float>()
-    internal var mapRREF = TreeMap<String, Float>()
     internal var sequence = 0
     internal var fourDecimal = DecimalFormat("0.0000")
     internal var oneDecimal = DecimalFormat("0.0")
@@ -100,104 +96,64 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         super.onConfigurationChanged(config)
     }
 
-    fun resetEverything() {
-        Log.d(Const.TAG, "Resetting internal map and all UI elements")
-        mapDREF.clear()
-        mapRREF.clear()
-        updateDebugUI()
-        resetIndicators()
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
+        Log.d(Const.TAG, "onCreate()")
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        versionText.text = "v" + BuildConfig.VERSION_NAME + " " + BuildConfig.VERSION_CODE + " " + BuildConfig.BUILD_TYPE
-        resetButton.setOnClickListener {
-            resetEverything()
-        }
-        simulateButton.setOnClickListener {
-            Log.d(Const.TAG, "Simulating some data")
-            processUDP(sample_groundspeed)
-            processUDP(sample_data)
+        // Add the compiled-in BuildConfig values to the about text
+        versionText.text = "XPlaneMonitor v" + Const.getBuildVersion() + " " + BuildConfig.BUILD_TYPE + " " + Const.getBuildId()
 
-            Log.d(Const.TAG, "Processing res/raw/xplane_dump.raw file")
-            val stream = resources.openRawResource(R.raw.xplane_dump)
-            val packet = ByteArray(510)
-            var count = 0
-            try {
-                while(true) {
-                    val len = stream.read(packet)
-                    if (len != packet.size)
-                        break
-                    processUDP(packet)
-                    count++
-                }
-                Log.d(Const.TAG, "Finished processing rew/raw/xplane_dump.raw with $count packets")
-                stream.close()
-            } catch (e: IOException) {
-                Log.e(Const.TAG, "Could not read from xplane_dump.raw " + e)
-            }
-
-            globalLatitude += 1f
-            globalLongitude += 1f
-            globalHeading += 1f
-            Log.d(Const.TAG, "Moving latitude and longitude to $globalLatitude $globalLongitude")
-            setItemMap(globalLatitude, globalLongitude, globalHeading)
-        }
+        // Add the compiled-in BuildConfig values to the about text
+        aboutText.text = aboutText.getText().toString().replace("__VERSION__", "Version: " + Const.getBuildVersion() + " " + BuildConfig.BUILD_TYPE + " build " + Const.getBuildId() + " " + "\nBuild date: " + Const.getBuildDateTime())
 
         switchMainButton.setOnClickListener {
             Log.d(Const.TAG, "Enabling main tab")
             layoutMain.visibility = View.VISIBLE
-            layoutDebug.visibility = View.GONE
+            layoutAbout.visibility = View.GONE
             layoutMap.visibility = View.GONE
-            updateDebugUI()
         }
 
-        switchDebugButton.setOnClickListener {
-            Log.d(Const.TAG, "Enabling debug tab")
+        switchAboutButton.setOnClickListener {
+            Log.d(Const.TAG, "Enabling about tab")
             layoutMain.visibility = View.GONE
-            layoutDebug.visibility = View.VISIBLE
+            layoutAbout.visibility = View.VISIBLE
             layoutMap.visibility = View.GONE
-            updateDebugUI()
         }
 
         switchMapButton.setOnClickListener {
             Log.d(Const.TAG, "Enabling map tab")
             layoutMain.visibility = View.GONE
-            layoutDebug.visibility = View.GONE
+            layoutAbout.visibility = View.GONE
             layoutMap.visibility = View.VISIBLE
-            updateDebugUI()
         }
 
         switchDetectButton.setOnClickListener {
             Log.d(Const.TAG, "Popup for manual hostname")
             popupManualHostname()
         }
+        aboutText.setOnClickListener {
+            Log.d(Const.TAG, "Popup for manual hostname")
+            popupManualHostname()
+        }
+        versionText.setOnClickListener {
+            Log.d(Const.TAG, "Popup for manual hostname")
+            popupManualHostname()
+        }
 
         fun button_to_cmnd(button: Button, cmnd: String) {
             button.setOnClickListener {
-                check_thread(xplaneAddress, "Button for command $cmnd") {
-                    dref_listener!!.sendCMND(xplaneAddress!!, cmnd)
-                }
+                Log.d(Const.TAG, "Sending button command $cmnd")
+                sendCommand(tcp_extplane, cmnd)
             }
         }
 
         fun button_to_actions(button: XButton, cmnd: String, dref: String) {
             button.setOnClickListener {
                 val value = button.getInverseState()
-                check_thread(xplaneAddress, "Button for CMND $cmnd, and DREF $dref to $value") {
-                    dref_listener!!.sendCMND(xplaneAddress!!, cmnd)
-                    dref_listener!!.sendDREF(xplaneAddress!!, dref, value)
-                }
-            }
-        }
-
-        fun button_to_dref(button: XButton, dref: String, value: Float) {
-            button.setOnClickListener {
-                check_thread(xplaneAddress, "Button for DREF $dref to $value") {
-                    dref_listener!!.sendDREF(xplaneAddress!!, dref, value)
-                }
+                Log.d(Const.TAG, "Button for CMND $cmnd, and DREF $dref to $value")
+                sendCommand(tcp_extplane, cmnd)
+                sendChange(tcp_extplane, dref, value)
             }
         }
 
@@ -205,14 +161,13 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             val efis_mode_prev = efis_mode_state
             val efis_mode_next = if(efis_mode_state >= 3) 0 else efis_mode_state+1
             efis_mode_state = efis_mode_next
-            check_thread(xplaneAddress, "Change EFIS mode to $efis_mode_next from $efis_mode_prev") {
-                dref_listener!!.sendDREF(xplaneAddress!!, "1-sim/ndpanel/1/hsiModeRotary", efis_mode_state.toFloat()) // XP737
-                var rewrite = efis_mode_next
-                if (rewrite == 3)
-                    rewrite = 4
-                dref_listener!!.sendDREF(xplaneAddress!!, "sim/cockpit/switches/EFIS_map_submode[0]", rewrite.toFloat()) // FF767
-                dref_listener!!.sendDREF(xplaneAddress!!, "laminar/B738/EFIS_control/capt/map_mode_pos", efis_mode_state.toFloat()) // ZB737
-            }
+            Log.d(Const.TAG, "Change EFIS mode to $efis_mode_next from $efis_mode_prev")
+            sendChange(tcp_extplane, "1-sim/ndpanel/1/hsiModeRotary", efis_mode_state.toFloat()) // XP737
+            var rewrite = efis_mode_next
+            if (rewrite == 3)
+                rewrite = 4
+            sendChange(tcp_extplane, "sim/cockpit/switches/EFIS_map_submode[0]", rewrite.toFloat()) // FF767
+            sendChange(tcp_extplane, "laminar/B738/EFIS_control/capt/map_mode_pos", efis_mode_state.toFloat()) // ZB737
         }
 
         fun efis_range_change(dir: Int) {
@@ -223,14 +178,13 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             else if (efis_range_next < 0)
                 efis_range_next = 0
             efis_range_state = efis_range_next
-            check_thread(xplaneAddress, "Change EFIS range with direction $dir to $efis_range_next from $efis_range_prev") {
-                dref_listener!!.sendDREF(xplaneAddress!!, "1-sim/ndpanel/1/hsiRangeRotary", efis_range_state.toFloat())                  // FF767
-                dref_listener!!.sendDREF(xplaneAddress!!, "sim/cockpit/switches/EFIS_map_range_selector[0]", efis_range_state.toFloat()) // XP737
-                if (dir > 0)
-                    dref_listener!!.sendCMND(xplaneAddress!!, "laminar/B738/EFIS_control/capt/map_range_up") // ZB737
-                else
-                    dref_listener!!.sendCMND(xplaneAddress!!, "laminar/B738/EFIS_control/capt/map_range_dn") // ZB737
-            }
+            Log.d(Const.TAG, "Change EFIS range with direction $dir to $efis_range_next from $efis_range_prev")
+            sendChange(tcp_extplane, "1-sim/ndpanel/1/hsiRangeRotary", efis_range_state.toFloat())                  // FF767
+            sendChange(tcp_extplane, "sim/cockpit/switches/EFIS_map_range_selector[0]", efis_range_state.toFloat()) // XP737
+            if (dir > 0)
+                sendCommand(tcp_extplane, "laminar/B738/EFIS_control/capt/map_range_up") // ZB737
+            else
+                sendCommand(tcp_extplane, "laminar/B738/EFIS_control/capt/map_range_dn") // ZB737
         }
 
         map_zoom_out.setOnClickListener {
@@ -253,21 +207,19 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         button_to_actions(efis_button_ctr, "laminar/B738/EFIS_control/capt/push_button/ctr_press", "1-sim/ndpanel/1/hsiModeButton")
 
         all_lights_on.setOnClickListener {
-            check_thread(xplaneAddress, "Set all lights on") {
-                for (i in 0 until landingLightsText.size)
-                    dref_listener!!.sendDREF(xplaneAddress!!, "sim/cockpit2/switches/landing_lights_switch[$i]", 1.0f)
-                for (i in 0 until genericLightsText.size)
-                    dref_listener!!.sendDREF(xplaneAddress!!, "sim/cockpit2/switches/generic_lights_switch[$i]", 1.0f)
-            }
+            Log.d(Const.TAG, "Set all lights on")
+            for (i in 0 until landingLightsText.size)
+                sendChange(tcp_extplane, "sim/cockpit2/switches/landing_lights_switch[$i]", 1.0f)
+            for (i in 0 until genericLightsText.size)
+                sendChange(tcp_extplane, "sim/cockpit2/switches/generic_lights_switch[$i]", 1.0f)
         }
 
         all_lights_off.setOnClickListener {
-            check_thread(xplaneAddress, "Set all lights off") {
-                for (i in 0 until landingLightsText.size)
-                    dref_listener!!.sendDREF(xplaneAddress!!, "sim/cockpit2/switches/landing_lights_switch[$i]", 0.0f)
-                for (i in 0 until genericLightsText.size)
-                    dref_listener!!.sendDREF(xplaneAddress!!, "sim/cockpit2/switches/generic_lights_switch[$i]", 0.0f)
-            }
+            Log.d(Const.TAG, "Set all lights off")
+            for (i in 0 until landingLightsText.size)
+                sendChange(tcp_extplane, "sim/cockpit2/switches/landing_lights_switch[$i]", 0.0f)
+            for (i in 0 until genericLightsText.size)
+                sendChange(tcp_extplane, "sim/cockpit2/switches/generic_lights_switch[$i]", 0.0f)
         }
 
         for (i in 0 until landingLightsText.size) {
@@ -277,9 +229,8 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             layout_lights.addView(t)
             t.setOnClickListener {
                 val inverted = 1.0f - landingLightsValues[i]
-                check_thread(xplaneAddress, "Clicked landing_lights_switch[$i] from " + landingLightsValues[i] + " to new " + inverted) {
-                    dref_listener!!.sendDREF(xplaneAddress!!, "sim/cockpit2/switches/landing_lights_switch[$i]", inverted)
-                }
+                Log.d(Const.TAG, "Clicked landing_lights_switch[$i] from " + landingLightsValues[i] + " to new " + inverted)
+                sendChange(tcp_extplane, "sim/cockpit2/switches/landing_lights_switch[$i]", inverted)
             }
             landingLightsText[i] = t
         }
@@ -290,9 +241,8 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
             layout_lights.addView(t)
             t.setOnClickListener {
                 val inverted = 1.0f - genericLightsValues[i]
-                check_thread(xplaneAddress, "Clicked generic_lights_switch[$i] from " + genericLightsValues[i] + " to new " + inverted) {
-                    dref_listener!!.sendDREF(xplaneAddress!!, "sim/cockpit2/switches/generic_lights_switch[$i]", inverted)
-                }
+                Log.d(Const.TAG, "Clicked generic_lights_switch[$i] from " + genericLightsValues[i] + " to new " + inverted)
+                sendChange(tcp_extplane, "sim/cockpit2/switches/generic_lights_switch[$i]", inverted)
             }
             genericLightsText[i] = t
         }
@@ -306,16 +256,14 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         flt_alt_dn.setOnClickListener {
             max_allowable_altitude_ft -= 5000
             if (max_allowable_altitude_ft < 0) max_allowable_altitude_ft = 0
-            check_thread(xplaneAddress, "Change maximum altitude to $max_allowable_altitude_ft") {
-                dref_listener!!.sendDREF(xplaneAddress!!, "sim/cockpit2/pressurization/actuators/max_allowable_altitude_ft", max_allowable_altitude_ft.toFloat())
-            }
+            Log.d(Const.TAG, "Change maximum altitude to $max_allowable_altitude_ft")
+            sendChange(tcp_extplane, "sim/cockpit2/pressurization/actuators/max_allowable_altitude_ft", max_allowable_altitude_ft.toFloat())
         }
         flt_alt_up.setOnClickListener {
             max_allowable_altitude_ft += 5000
             if (max_allowable_altitude_ft > 45000) max_allowable_altitude_ft = 45000
-            check_thread(xplaneAddress, "Change maximum altitude to $max_allowable_altitude_ft") {
-                dref_listener!!.sendDREF(xplaneAddress!!, "sim/cockpit2/pressurization/actuators/max_allowable_altitude_ft", max_allowable_altitude_ft.toFloat())
-            }
+            Log.d(Const.TAG, "Change maximum altitude to $max_allowable_altitude_ft")
+            sendChange(tcp_extplane, "sim/cockpit2/pressurization/actuators/max_allowable_altitude_ft", max_allowable_altitude_ft.toFloat())
         }
         button_to_cmnd(seatbelt_sign_up, "laminar/B738/toggle_switch/seatbelt_sign_up")
         button_to_cmnd(seatbelt_sign_dn, "laminar/B738/toggle_switch/seatbelt_sign_dn")
@@ -343,9 +291,20 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         }
         thread(start = true) {
             Log.d(Const.TAG, "XHSI: Started thread/send for mirroring from [$src] to [$dest] value $value")
-            dref_listener!!.sendDREF(xplaneAddress!!, dest, value)
+            sendChange(tcp_extplane, dest, value)
+        }
+    }
+
+    companion object {
+        private var backgroundThread: HandlerThread? = null
+
+        fun doUiThread(code: () -> Unit) {
+            Handler(Looper.getMainLooper()).post { code() }
         }
 
+        fun doBgThread(code: () -> Unit) {
+            Handler(backgroundThread!!.getLooper()).post { code() }
+        }
     }
 
     // The user can click on the connectText and specify a X-Plane hostname manually
@@ -405,35 +364,86 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         builder.show()
     }
 
+    private fun sendCommand(tcpRef: TCPClient?, cmnd: String) {
+        // Send the command on a separate thread
+        doBgThread {
+            if ((tcpRef != null) && (tcpRef == tcp_extplane) && connectWorking) {
+                tcpRef.writeln("cmd once $cmnd")
+            } else {
+                Log.d(Const.TAG, "Ignoring command $cmnd since TCP connection is not available")
+            }
+        }
+    }
 
-    fun restartNetworking() {
+    private fun sendRequest(tcpRef: TCPClient?, request: String) {
+        // Send the request on a separate thread
+        doBgThread {
+            if ((tcpRef != null) && (tcpRef == tcp_extplane) && connectWorking) {
+                tcpRef.writeln("sub $request")
+            } else {
+                Log.d(Const.TAG, "Ignoring request for $request since TCP connection is not available")
+            }
+        }
+    }
+
+    private fun sendChange(tcpRef: TCPClient?, dref: String, value: Float) {
+        // Send the request on a separate thread
+        doBgThread {
+            if ((tcpRef != null) && (tcpRef == tcp_extplane) && connectWorking) {
+                tcpRef.writeln("sub $dref")
+            } else {
+                Log.d(Const.TAG, "Ignoring request for $dref since TCP connection is not available")
+            }
+        }
+    }
+
+
+    private fun setConnectionStatus(line1: String, line2: String, fixup: String, dest: String? = null) {
+        Log.d(Const.TAG, "Changing connection status to [$line1][$line2][$fixup] with destination [$dest]")
+        var out = line1 + ". "
+        if (line2.length > 0)
+            out += "${line2}. "
+        if (fixup.length > 0)
+            out += "${fixup}. "
+        if (dest != null)
+            out += "${dest}."
+        if (connectFailures > 0)
+            out += " Error #$connectFailures"
+
+        connectText.text = out
+    }
+
+    private fun restartNetworking() {
         Log.d(Const.TAG, "restartNetworking()")
-        resetEverything()
-        xplaneStatus.text = "Re-detecting X-Plane"
-
-        Log.d(Const.TAG, "Cleaning up existing sockets")
-        if (dref_listener != null) {
-            dref_listener!!.stopListener()
-            dref_listener = null
+        resetDisplay()
+        setConnectionStatus("Closing down network", "", "Wait a few seconds")
+        connectAddress = null
+        connectWorking = false
+        connectZibo = false
+        connectActTailnum = ""
+        if (tcp_extplane != null) {
+            Log.d(Const.TAG, "Cleaning up any TCP connections")
+            tcp_extplane!!.stopListener()
+            tcp_extplane = null
         }
         if (becn_listener != null) {
+            Log.w(Const.TAG, "Cleaning up the BECN listener, somehow it is still around?")
             becn_listener!!.stopListener()
             becn_listener = null
         }
-
         if (connectShutdown) {
             Log.d(Const.TAG, "Will not restart BECN listener since connectShutdown is set")
         } else {
             if (manualAddress.isEmpty()) {
-                xplaneStatus.setText("Waiting for X-Plane BECN")
+                setConnectionStatus("Waiting for X-Plane", "BECN broadcast", "Touch to override")
                 Log.d(Const.TAG, "Starting X-Plane BECN listener since connectShutdown is not set")
                 becn_listener = MulticastReceiver(Const.BECN_ADDRESS, Const.BECN_PORT, this)
             } else {
                 Log.d(Const.TAG, "Manual address $manualAddress specified, skipping any auto-detection")
-                check(becn_listener == null) { "becn_listener should not be initialized" }
-                dref_listener = UDPReceiver(Const.UDP_DREF_PORT, this)
-                xplaneAddress = manualInetAddress
-                xplaneStatus.setText("X-Plane: " + xplaneAddress!!.getHostAddress())
+                check(tcp_extplane == null)
+                connectAddress = manualAddress
+                setConnectionStatus("Manual TCP connect", "Find ExtPlane plugin", "Check Win firewall", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
+                tcp_extplane = TCPClient(manualInetAddress!!, Const.TCP_EXTPLANE_PORT, this)
             }
         }
     }
@@ -441,8 +451,12 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
     override fun onResume() {
         super.onResume()
         mapView.onResume()
-
+        Log.d(Const.TAG, "onResume()")
         connectShutdown = false
+
+        // Start up our background processing thread
+        backgroundThread = HandlerThread("BackgroundThread")
+        backgroundThread!!.start()
 
         // Retrieve the manual address from shared preferences
         val sharedPref = getPreferences(Context.MODE_PRIVATE)
@@ -454,18 +468,152 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
     }
 
     override fun onPause() {
-        Log.d(Const.TAG, "onPause(), cancelling UDP listeners")
+        Log.d(Const.TAG, "onPause()")
         connectShutdown = true // Prevent new BECN listeners starting up in restartNetworking
-        if (dref_listener != null) {
-            dref_listener!!.stopListener()
-            dref_listener = null
+        if (tcp_extplane != null) {
+            Log.d(Const.TAG, "onPause(): Cancelling existing TCP connection")
+            tcp_extplane!!.stopListener()
+            tcp_extplane = null
         }
         if (becn_listener != null) {
+            Log.d(Const.TAG, "onPause(): Cancelling existing BECN listener")
             becn_listener!!.stopListener()
             becn_listener = null
         }
+        backgroundThread!!.quit()
         mapView.onPause()
         super.onPause()
+    }
+
+    override fun onDestroy() {
+        Log.d(Const.TAG, "onDestroy()")
+        super.onDestroy()
+    }
+
+    override fun onFailureMulticast(ref: MulticastReceiver) {
+        if (ref != becn_listener)
+            return
+        connectFailures++
+        setConnectionStatus("No network available", "Cannot listen for BECN", "Enable WiFi")
+    }
+
+    override fun onTimeoutMulticast(ref: MulticastReceiver) {
+        if (ref != becn_listener)
+            return
+        Log.d(Const.TAG, "Received indication the multicast socket is not getting replies, will restart it and wait again")
+        connectFailures++
+        setConnectionStatus("Timeout waiting for", "BECN multicast", "Touch to override")
+    }
+
+    override fun onReceiveMulticast(buffer: ByteArray, source: InetAddress, ref: MulticastReceiver) {
+        if (ref != becn_listener)
+            return
+        setConnectionStatus("Found BECN multicast", "Find ExtPlane plugin", "Check Win firewall", source.getHostAddress())
+        connectAddress = source.toString().replace("/","")
+
+        // The BECN listener will only reply once, so close it down and open the TCP connection
+        becn_listener!!.stopListener()
+        becn_listener = null
+
+        check(tcp_extplane == null)
+        Log.d(Const.TAG, "Making connection to $connectAddress:${Const.TCP_EXTPLANE_PORT}")
+        tcp_extplane = TCPClient(source, Const.TCP_EXTPLANE_PORT, this)
+    }
+
+    override fun onConnectTCP(tcpRef: TCPClient) {
+        if (tcpRef != tcp_extplane)
+            return
+        // We will wait for EXTPLANE 1 in onReceiveTCP, so don't send the requests just yet
+        setConnectionStatus("Established TCP", "Waiting for ExtPlane", "Needs ExtPlane plugin", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
+    }
+
+    override fun onDisconnectTCP(tcpRef: TCPClient) {
+        if (tcpRef != tcp_extplane)
+            return
+        Log.d(Const.TAG, "onDisconnectTCP(): Closing down TCP connection and will restart")
+        connectFailures++
+        restartNetworking()
+    }
+
+    override fun onReceiveTCP(line: String, tcpRef: TCPClient) {
+        // If the current connection does not match the incoming reference, it is out of date and should be ignored.
+        // This is important otherwise we will try to transmit on the wrong socket, fail, and then try to restart.
+        if (tcpRef != tcp_extplane)
+            return
+
+        if (line == "EXTPLANE 1") {
+            Log.d(Const.TAG, "Found ExtPlane welcome message, will now make subscription requests for aircraft info")
+            setConnectionStatus("Received EXTPLANE", "Sending acf subscribe", "Start your flight", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
+
+            // Make requests for aircraft type messages so we can detect when the Zibo 738 is available,
+            // the datarefs do not exist until the aircraft is loaded and in use
+            doBgThread {
+                tcpRef.writeln("sub sim/aircraft/view/acf_tailnum")
+            }
+        } else {
+            // Log.d(Const.TAG, "Received TCP line [$line]")
+            if (!connectWorking) {
+                check(!connectZibo) { "connectZibo should not be set if connectWorking is not set" }
+                // Everything is working with actual data coming back.
+                // This is the last time we can put debug text on the CDU before it is overwritten
+                connectFailures = 0
+                setConnectionStatus("X-Plane CDU starting", "Check aircraft type", "Must be Zibo 738", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
+                connectWorking = true
+            }
+
+            val tokens = line.split(" ")
+            if (tokens[0] == "ub") {
+                val decoded = String(Base64.decode(tokens[2], Base64.DEFAULT))
+                // Replace ` with degree symbol, and * with a diamond symbol (there is no box in Android fonts)
+                val fixed = decoded.replace('`','\u00B0').replace('*','\u25CA')
+
+                Log.d(Const.TAG, "Decoded byte array for name [${tokens[1]}] with string [$decoded]")
+
+                // If this is the first time we found a Zibo CDU dataref, then update the UI, this is the final step!
+                // TODO: This code should run when we receive a Zibo-specific dataref
+                if (!connectZibo) {
+                    setConnectionStatus("X-Plane CDU working", "", "", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
+                    connectZibo = true
+                }
+
+                // We have received acf_tailnum, so the aircraft has changed, and this will indicate if it is a Zibo-variant aircraft
+                if (tokens[1] == "sim/aircraft/view/acf_tailnum") {
+                    // Has the Zibo-state of the tailnum changed? If we switch from one variant to another, we should not redo the subscriptions
+                    // because it will reset the display while incoming changes are arriving.
+                    if (decoded.toLowerCase().contains("zb73") != connectActTailnum.toLowerCase().contains("zb73")) {
+                        // The aircraft tailnum has actually changed from before
+                        if (decoded.toLowerCase().contains("zb73")) {
+                            setConnectionStatus("X-Plane CDU starting", "Starting subscription", "Must be Zibo 738", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
+
+                            // The aircraft has changed to the Zibo 738, so start the subscription process
+                            doBgThread {
+                                Log.d(Const.TAG, "Sending subscriptions for Zibo 738 datarefs now that it is running")
+                                // TODO: Request Zibo specific datarefs here
+
+                                // Request all the datarefs we are interested in
+                                requestDatarefs()
+                            }
+                        } else {
+                            // The aircraft changed to something non-Zibo, so reset the CDU and wait for a new aircraft
+                            connectZibo = false
+                            resetDisplay()
+                            setConnectionStatus("Waiting for Zibo 738", "Non-Zibo detected", "Change to Zibo 738", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
+                        }
+                        connectActTailnum = decoded
+                    } else {
+                        Log.d(Const.TAG, "acf_tailnum updated, but no change from previous [$connectActTailnum]")
+                    }
+                } else {
+                    Log.d(Const.TAG, "Found unused result name [${tokens[1]}] with string [$fixed]")
+                }
+            } else if ((tokens[0] == "ud") || (tokens[0] == "uf")){
+                val number = tokens[2].toFloat()
+                Log.d(Const.TAG, "Decoded number for name [${tokens[1]}] with value [$number]")
+                processFloat(tokens[1], number)
+            } else {
+                Log.e(Const.TAG, "Unknown encoding type [${tokens[0]}] for name [${tokens[1]}]")
+            }
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus:Boolean) {
@@ -549,123 +697,84 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         val fpm = -altitude_feet / minutes
 
         setItemString(itemEstimateMins, "NAV1 Est Mins", if (airspeed_knots < 100 || distance_nm < 0.1) "N/A" else oneDecimal.format(minutes.toDouble()) + "mins", false)
-        setItemString(itemEstimateFPM,  "NAV1 Est FPM",  if (airspeed_knots < 100 || distance_nm < 0.1) "N/A" else oneDecimal.format(fpm.toDouble()) + "fpm", false)
+        setItemString(itemEstimateFPM, "NAV1 Est FPM", if (airspeed_knots < 100 || distance_nm < 0.1) "N/A" else oneDecimal.format(fpm.toDouble()) + "fpm", false)
     }
 
-    override fun onTimeoutMulticast(ref: MulticastReceiver) {
-        Log.d(Const.TAG, "Received indication that we never received any BECN packets, need to keep waiting")
-        xplaneStatus.setText("Re-detecting X-Plane - BECN timeout")
-    }
-
-    override fun onFailureMulticast(ref: MulticastReceiver) {
-        Log.d(Const.TAG, "Received indication the network is not ready, cannot open socket")
-        xplaneStatus.setText("No network")
-    }
-
-    private fun requestRREF() {
+    private fun requestDatarefs() {
         // Request values that we are interested in getting updates for
-        check_thread(xplaneAddress, "Requesting values via RREF") {
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit/switches/EFIS_map_submode[0]", 2)        // Map XP737
-            dref_listener!!.sendRREF(xplaneAddress!!, "1-sim/ndpanel/1/hsiModeRotary", 2)                   // Map FF767
-            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/EFIS_control/capt/map_mode_pos", 2)     // Map ZB737
+        Log.d(Const.TAG, "Requesting values via RREF")
+        sendRequest(tcp_extplane, "sim/cockpit/switches/EFIS_map_submode[0]")        // Map XP737
+        sendRequest(tcp_extplane, "1-sim/ndpanel/1/hsiModeRotary")                   // Map FF767
+        sendRequest(tcp_extplane, "laminar/B738/EFIS_control/capt/map_mode_pos")     // Map ZB737
 
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit/switches/EFIS_map_range_selector[0]", 2) // Range XP737
-            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/EFIS/capt/map_range", 2)                // Range ZB737
-            dref_listener!!.sendRREF(xplaneAddress!!, "1-sim/ndpanel/1/hsiRangeRotary", 2)                  // Range FF767
+        sendRequest(tcp_extplane, "sim/cockpit/switches/EFIS_map_range_selector[0]") // Range XP737
+        sendRequest(tcp_extplane, "laminar/B738/EFIS/capt/map_range")                // Range ZB737
+        sendRequest(tcp_extplane, "1-sim/ndpanel/1/hsiRangeRotary")                  // Range FF767
 
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit/switches/EFIS_shows_tcas[0]", 2)      // TFC XP737
-            dref_listener!!.sendRREF(xplaneAddress!!, "1-sim/ndpanel/1/hsiRangeButton", 2)               // TFC FF767
+        sendRequest(tcp_extplane, "sim/cockpit/switches/EFIS_shows_tcas[0]")      // TFC XP737
+        sendRequest(tcp_extplane, "1-sim/ndpanel/1/hsiRangeButton")               // TFC FF767
 
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit/switches/EFIS_shows_airports[0]", 2)  // ARPT XP737
-            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/EFIS/EFIS_airport_on", 2)            // ARPT ZB737
-            dref_listener!!.sendRREF(xplaneAddress!!, "1-sim/ndpanel/1/map3", 2)                         // ARPT FF767
+        sendRequest(tcp_extplane, "sim/cockpit/switches/EFIS_shows_airports[0]")  // ARPT XP737
+        sendRequest(tcp_extplane, "laminar/B738/EFIS/EFIS_airport_on")            // ARPT ZB737
+        sendRequest(tcp_extplane, "1-sim/ndpanel/1/map3")                         // ARPT FF767
 
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit/switches/EFIS_shows_waypoints[0]", 2) // WPT XP737
-            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/EFIS/EFIS_fix_on", 2)                // WPT ZB737
-            dref_listener!!.sendRREF(xplaneAddress!!, "1-sim/ndpanel/1/map5", 2)                         // WPT FF767
+        sendRequest(tcp_extplane, "sim/cockpit/switches/EFIS_shows_waypoints[0]") // WPT XP737
+        sendRequest(tcp_extplane, "laminar/B738/EFIS/EFIS_fix_on")                // WPT ZB737
+        sendRequest(tcp_extplane, "1-sim/ndpanel/1/map5")                         // WPT FF767
 
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit/switches/EFIS_shows_VORs[0]", 2)      // STA XP737
-            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/EFIS/EFIS_vor_on", 2)                // STA ZB737
-            dref_listener!!.sendRREF(xplaneAddress!!, "1-sim/ndpanel/1/map2", 2)                         // STA FF767
+        sendRequest(tcp_extplane, "sim/cockpit/switches/EFIS_shows_VORs[0]")      // STA XP737
+        sendRequest(tcp_extplane, "laminar/B738/EFIS/EFIS_vor_on")                // STA ZB737
+        sendRequest(tcp_extplane, "1-sim/ndpanel/1/map2")                         // STA FF767
 
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit/switches/EFIS_shows_weather[0]", 2)   // WXR XP737
-            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/EFIS/EFIS_wx_on", 2)                 // WXR ZB737
-            // No need for this since EFIS_shows_weather[0] seems to pass this on
-            // dref_listener!!.sendRREF(xplaneAddress!!, "1-sim/ndpanel/1/hsiWxr", 2) // WXR
+        sendRequest(tcp_extplane, "sim/cockpit/switches/EFIS_shows_weather[0]")   // WXR XP737
+        sendRequest(tcp_extplane, "laminar/B738/EFIS/EFIS_wx_on")                 // WXR ZB737
+        // No need for this since EFIS_shows_weather[0] seems to pass this on
+        // sendRequest(tcp_extplane, "1-sim/ndpanel/1/hsiWxr") // WXR
 
-            dref_listener!!.sendRREF(xplaneAddress!!, "1-sim/ndpanel/1/map4", 2)                        // DATA FF767
-            // dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit/switches/EFIS_shows_data[0]", 2)              // DATA, does not exist in XP737 or ZB737?
+        sendRequest(tcp_extplane, "1-sim/ndpanel/1/map4")                         // DATA FF767
+        // sendRequest(tcp_extplane, "sim/cockpit/switches/EFIS_shows_data[0]")           // DATA, does not exist in XP737 or ZB737?
 
-            dref_listener!!.sendRREF(xplaneAddress!!, "1-sim/ndpanel/1/hsiTerr", 2)                     // TERR, no equivalent in XP737 or ZB737?
+        sendRequest(tcp_extplane, "1-sim/ndpanel/1/hsiTerr")                      // TERR, no equivalent in XP737 or ZB737?
 
-            dref_listener!!.sendRREF(xplaneAddress!!, "1-sim/ndpanel/1/hsiModeButton", 2)               // CTR FF767, no equivalent state on ZB737 or XP737
+        sendRequest(tcp_extplane, "1-sim/ndpanel/1/hsiModeButton")                // CTR FF767, no equivalent state on ZB737 or XP737
 
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/operation/misc/frame_rate_period[0]", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit2/controls/left_brake_ratio[0]", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit2/controls/right_brake_ratio[0]", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit2/controls/parking_brake_ratio[0]", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit2/controls/speedbrake_ratio[0]", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit/warnings/annunciators/reverse[0]", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/flightmodel/position/indicated_airspeed[0]", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/flightmodel/position/y_agl[0]", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/flightmodel/position/elevation[0]", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit2/gauges/indicators/altitude_ft_pilot[0]", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit2/controls/flap_handle_deploy_ratio[0]", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/flightmodel/controls/flaprqst[0]", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/flightmodel2/gear/tire_vertical_force_n_mtr[0]", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/flightmodel/forces/g_nrml[0]", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit/radios/nav1_dme_dist_m[0]", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit/radios/nav2_dme_dist_m[0]", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/flightmodel/position/vh_ind_fpm", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/flightmodel/position/latitude", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/flightmodel/position/longitude", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/graphics/view/view_heading", 2)
+        sendRequest(tcp_extplane, "sim/operation/misc/frame_rate_period[0]")
+        sendRequest(tcp_extplane, "sim/cockpit2/controls/left_brake_ratio[0]")
+        sendRequest(tcp_extplane, "sim/cockpit2/controls/right_brake_ratio[0]")
+        sendRequest(tcp_extplane, "sim/cockpit2/controls/parking_brake_ratio[0]")
+        sendRequest(tcp_extplane, "sim/cockpit2/controls/speedbrake_ratio[0]")
+        sendRequest(tcp_extplane, "sim/cockpit/warnings/annunciators/reverse[0]")
+        sendRequest(tcp_extplane, "sim/flightmodel/position/indicated_airspeed[0]")
+        sendRequest(tcp_extplane, "sim/flightmodel/position/y_agl[0]")
+        sendRequest(tcp_extplane, "sim/flightmodel/position/elevation[0]")
+        sendRequest(tcp_extplane, "sim/cockpit2/gauges/indicators/altitude_ft_pilot[0]")
+        sendRequest(tcp_extplane, "sim/cockpit2/controls/flap_handle_deploy_ratio[0]")
+        sendRequest(tcp_extplane, "sim/flightmodel/controls/flaprqst[0]")
+        sendRequest(tcp_extplane, "sim/flightmodel2/gear/tire_vertical_force_n_mtr[0]")
+        sendRequest(tcp_extplane, "sim/flightmodel/forces/g_nrml[0]")
+        sendRequest(tcp_extplane, "sim/cockpit/radios/nav1_dme_dist_m[0]")
+        sendRequest(tcp_extplane, "sim/cockpit/radios/nav2_dme_dist_m[0]")
+        sendRequest(tcp_extplane, "sim/flightmodel/position/vh_ind_fpm")
+        sendRequest(tcp_extplane, "sim/flightmodel/position/latitude")
+        sendRequest(tcp_extplane, "sim/flightmodel/position/longitude")
+        sendRequest(tcp_extplane, "sim/graphics/view/view_heading")
 
-            for (i in 0 until landingLightsText.size)
-                dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit2/switches/landing_lights_switch[$i]", 2)
-            for (i in 0 until genericLightsText.size)
-                dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit2/switches/generic_lights_switch[$i]", 2)
+        for (i in 0 until landingLightsText.size)
+            sendRequest(tcp_extplane, "sim/cockpit2/switches/landing_lights_switch[$i]")
+        for (i in 0 until genericLightsText.size)
+            sendRequest(tcp_extplane, "sim/cockpit2/switches/generic_lights_switch[$i]")
 
-            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/ice/window_heat_l_fwd_pos", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/ice/window_heat_r_fwd_pos", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/ice/window_heat_l_side_pos", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/ice/window_heat_r_side_pos", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/toggle_switch/capt_probes_pos", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/toggle_switch/fo_probes_pos", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "sim/cockpit2/pressurization/actuators/max_allowable_altitude_ft", 2)
-            dref_listener!!.sendRREF(xplaneAddress!!, "laminar/B738/toggle_switch/seatbelt_sign_pos", 2)
-        }
+        sendRequest(tcp_extplane, "laminar/B738/ice/window_heat_l_fwd_pos")
+        sendRequest(tcp_extplane, "laminar/B738/ice/window_heat_r_fwd_pos")
+        sendRequest(tcp_extplane, "laminar/B738/ice/window_heat_l_side_pos")
+        sendRequest(tcp_extplane, "laminar/B738/ice/window_heat_r_side_pos")
+        sendRequest(tcp_extplane, "laminar/B738/toggle_switch/capt_probes_pos")
+        sendRequest(tcp_extplane, "laminar/B738/toggle_switch/fo_probes_pos")
+        sendRequest(tcp_extplane, "sim/cockpit2/pressurization/actuators/max_allowable_altitude_ft")
+        sendRequest(tcp_extplane, "laminar/B738/toggle_switch/seatbelt_sign_pos")
     }
 
-    override fun onReceiveMulticast(buffer: ByteArray, source: InetAddress, ref: MulticastReceiver) {
-        Log.d(Const.TAG, "Received BECN multicast packet from $source")
-        Log.d(Const.TAG, "BECN packet printable: " + UDPReceiver.bytesToChars(buffer, buffer.size))
-        Log.d(Const.TAG, "BECN packet hex: " + UDPReceiver.bytesToHex(buffer, buffer.size))
-
-        // The BECN listener will only reply once for a new X-Plane IP. If X-Plane restarts then the
-        // app needs to be restarted. If X-Plane changes IP address then the app needs restarting too.
-        becn_listener!!.stopListener()
-        becn_listener = null
-
-        // Open up the UDP listener
-        dref_listener = UDPReceiver(Const.UDP_DREF_PORT, this)
-        xplaneAddress = source
-        xplaneStatus.setText("X-Plane: " + xplaneAddress!!.getHostAddress())
-    }
-
-    private fun processRREF(name: String, value: Float) {
-        val prev: Float? = mapRREF.get(name)
-        if ((prev != null) and (prev == value)) {
-            // Value has been seen before and is not a change, so ignore it to save time.
-            // This is also handy when different aircraft work with different names and we can ignore unchanging values.
-            // TODO: There is a possibility we could have stale values here when switching planes?
-            // Log.d(Const.TAG, "Ignoring unchanged value for $name with value $value")
-            return
-        } else {
-            // Log.d(Const.TAG, "Existing $name changing to $value from $prev")
-        }
-        mapRREF.put(name, value)
-
+    private fun processFloat(name: String, value: Float) {
         if (name == "sim/operation/misc/frame_rate_period[0]") {
             if (value < 0.0001) {
                 itemFPS.text = "FPS\nn/a"
@@ -865,113 +974,8 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
         }
     }
 
-    override fun onConnectUDP(ref: UDPReceiver) {
-        // Now that we have a connection, send requests for data now
-        Log.d(Const.TAG, "UDP socket is ready, send requests for data")
-        requestRREF()
-    }
-
-    override fun onReceiveUDP(ref: UDPReceiver, buffer: ByteArray) {
-        // Log.d(Const.TAG, "onReceiveUDP bytes=" + buffer.length);
-        processUDP(buffer)
-    }
-
-    fun processUDP(buffer: ByteArray) {
-        sequence++
-        if (buffer.size >= 5 && buffer[0] == 'D'.toByte() && buffer[1] == 'R'.toByte() && buffer[2] == 'E'.toByte() && buffer[3] == 'F'.toByte()) {
-            // Handle DREF+ packet type here
-            // ["DREF+"=5bytes] [float=4bytes] ["label/name/var[0]\0"=remaining_bytes]
-            if (buffer[4] != '+'.toByte()) {
-                Log.e(Const.TAG, "Cannot parse [" + buffer[4] + "] when expected '+' symbol")
-                return
-            }
-            val f = ByteBuffer.wrap(buffer, +5, 4).order(ByteOrder.LITTLE_ENDIAN).float
-            // Find terminating null for the string
-            var zero: Int = 9
-            while (zero < buffer.size && buffer[zero] != 0x00.toByte()) {
-                zero++
-            }
-            val name = String(buffer, +9, zero - 9)
-            // Log.d(Const.TAG, "Parsed DREF+ with float=" + f + " for variable=" + name);
-
-            // We are not requesting any values via the manual X-Plane UI any more,
-            // so nothing should be coming through here any more. Mark them all as unused
-            // for the debug dump. Previously we had our big if() statement right here,
-            // and keeping it just in case we want to use it later.
-            val indicator = false
-
-            if (isDebugUI()) {
-                if (indicator) {
-                    // We requested this item
-                    mapDREF.put("Indicate: " + name, f)
-                } else {
-                    // We didn't need this item, it will only be visible in the debug dump
-                    mapDREF.put("Unused: " + name, f)
-                }
-            }
-
-            updateDebugUI()
-        } else if (buffer.size >= 5 && buffer[0] == 'R'.toByte() && buffer[1] == 'R'.toByte() && buffer[2] == 'E'.toByte() && buffer[3] == 'F'.toByte()) {
-            // Handle RREF, packet type here, based on our earlier request
-            // ["RREF,"=5bytes]
-            // [id=4bytes] [float=4bytes]
-            // ...
-            // Log.d(Const.TAG, "Found RREF packet bytes=" + buffer.size + ": " + UDPReceiver.bytesToChars(buffer, buffer.size))
-            if (buffer[4] != ','.toByte()) {
-                Log.e(Const.TAG, "Cannot parse [" + buffer[4] + "] when expected ',' symbol")
-                return
-            }
-            if ((buffer.size-5) % 8 != 0) {
-                Log.e(Const.TAG, "Improper RREF message size " + buffer.size + " should be 5+8*n bytes")
-                return
-            }
-            // Read all blocks of 8 bytes in a loop until we run out
-            var index = 5
-            var item = 0
-            while (index < buffer.size) {
-                val id = ByteBuffer.wrap(buffer, index, 4).order(ByteOrder.LITTLE_ENDIAN).int
-                val value = ByteBuffer.wrap(buffer, index+4, 4).order(ByteOrder.LITTLE_ENDIAN).float
-                val name = dref_listener!!.lookupRREF(id)
-                if (id < dref_listener!!.rref_base) {
-                    Log.e(Const.TAG, "#$item, idx=$index: Ignoring invalid id=$id, value=$value less than base ")
-                } else if (name != null) {
-                    // Log.d(Const.TAG, "#$item, idx=$index: Parsed RREF with name=$name, id=$id, value=$value")
-                    processRREF(name, value)
-                } else {
-                    Log.e(Const.TAG, "#$item, idx=$index: Ignoring unexpected RREF with id=$id, value=$value")
-                }
-                index += 8
-                item ++
-            }
-        } else if (buffer.size >= 5 && buffer[0] == 'D'.toByte() && buffer[1] == 'A'.toByte() && buffer[2] == 'T'.toByte() && buffer[3] == 'A'.toByte() && buffer[4] == '*'.toByte()) {
-            // Log.d(Const.TAG, "Ignoring legacy DATA* packet with size ${buffer.size}")
-        } else {
-            Log.e(Const.TAG, "Ignoring unknown packet: " + UDPReceiver.bytesToChars(buffer, buffer.size))
-        }
-    }
-
-    fun isDebugUI(): Boolean {
-        return (layoutDebug.visibility == View.VISIBLE)
-    }
-
-    fun updateDebugUI() {
-        // If debug mode is not visible, do nothing
-        if (!isDebugUI()) {
-            return
-        }
-
-        // Dump out current list of everything
-        var out = "sequence=" + sequence + "\n"
-        for ((key, value) in mapDREF) {
-            // Log.d(Const.TAG, "Key=" + entry.getKey() + " Value=" + entry.getValue());
-            out = out + "\n" + key + " = " + getCompactFloat(value)
-        }
-        out = out + "\n"
-        for ((key, value) in mapRREF) {
-            // Log.d(Const.TAG, "Key=" + entry.getKey() + " Value=" + entry.getValue());
-            out = out + "\n" + "RREF: " + key + " = " + getCompactFloat(value)
-        }
-        debugText.text = out
+    fun resetDisplay() {
+        resetIndicators()
     }
 
     fun resetIndicators() {
@@ -1003,34 +1007,5 @@ class MainActivity : Activity(), UDPReceiver.OnReceiveUDP, MulticastReceiver.OnR
 
         barForceVertical.resetLimits(max=1.0, warn=0.25) // +/- 1G (0G..2G)
         graphForceVertical.resetLimits(max=1.0, size=1) // +/- 1G (0G..2G), only 1 value on the graph
-    }
-
-    companion object {
-
-        val sample_groundspeed = byteArrayOf(0x44.toByte(), 0x52.toByte(), 0x45.toByte(), 0x46.toByte(), 0x2B.toByte(), 0xC0.toByte(), 0xBB.toByte(), 0xB0.toByte(), 0x35.toByte(), 0x66.toByte(), 0x61.toByte(), 0x6b.toByte(), 0x65.toByte(), 0x2f.toByte(), 0x66.toByte(), 0x6C.toByte(), 0x69.toByte(), 0x67.toByte(), 0x68.toByte(), 0x74.toByte(), 0x6D.toByte(), 0x6F.toByte(), 0x64.toByte(), 0x65.toByte(), 0x6C.toByte(), 0x2F.toByte(), 0x70.toByte(), 0x6F.toByte(), 0x73.toByte(), 0x69.toByte(), 0x74.toByte(), 0x69.toByte(), 0x6F.toByte(), 0x6E.toByte(), 0x2F.toByte(), 0x67.toByte(), 0x72.toByte(), 0x6F.toByte(), 0x75.toByte(), 0x6E.toByte(), 0x64.toByte(), 0x73.toByte(), 0x70.toByte(), 0x65.toByte(), 0x65.toByte(), 0x64.toByte(), 0x5B.toByte(), 0x30.toByte(), 0x5D.toByte())
-        val sample_data = hexStringToByteArray("444154412A000000000E88624133339F4100C079C4A7A6903D4C43903DA78D8F3D0000803F0000803F0200000000005C420000A6428045B14A00C079C400C079C400C079C400C079C400C079C40300000009000000AC660B3561810B3562810B3500C079C40A0000003A8A20353B8A20350D0000000000000000000000000000000000803F0000803F0000803F00000000000000000E0000000000803FA0C7993E000000000000000000C079C400C079C400C079C400C079C4220000006ED897436ED897434FFAA4434FFAA44300000000000000000000000000000000")
-
-        // From http://stackoverflow.com/questions/140131/convert-a-string-representation-of-a-hex-dump-to-a-byte-array-using-java
-        fun hexStringToByteArray(s: String): ByteArray {
-            val len = s.length
-            val data = ByteArray(len / 2)
-            var i = 0
-            while (i < len) {
-                data[i / 2] = ((Character.digit(s[i], 16) shl 4) + Character.digit(s[i + 1], 16)).toByte()
-                i += 2
-            }
-            return data
-        }
-
-        fun check_thread(address: InetAddress?, purpose: String, code: () -> Unit) {
-            if (address == null) {
-                Log.d(Const.TAG, "Skipping thread/send for [$purpose] because remote X-Plane is not discovered yet")
-            } else {
-                thread(start = true) {
-                    Log.d(Const.TAG, "Started thread/send for [$purpose]")
-                    code()
-                }
-            }
-        }
     }
 }
