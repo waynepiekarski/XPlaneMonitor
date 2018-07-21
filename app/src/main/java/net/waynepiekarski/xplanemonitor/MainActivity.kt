@@ -207,18 +207,18 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
 
         all_lights_on.setOnClickListener {
             Log.d(Const.TAG, "Set all lights on")
-            for (i in 0 until landingLightsText.size)
-                sendChange(tcp_extplane, "sim/cockpit2/switches/landing_lights_switch[$i]", 1.0f)
-            for (i in 0 until genericLightsText.size)
-                sendChange(tcp_extplane, "sim/cockpit2/switches/generic_lights_switch[$i]", 1.0f)
+            val onLandingLightsValues = FloatArray(landingLightsValues.size) { i -> 1.0f }
+            sendChangeArray(tcp_extplane, "sim/cockpit2/switches/landing_lights_switch", onLandingLightsValues)
+            val onGenericLightsValues = FloatArray(genericLightsValues.size) { i -> 1.0f }
+            sendChangeArray(tcp_extplane, "sim/cockpit2/switches/generic_lights_switch", onGenericLightsValues)
         }
 
         all_lights_off.setOnClickListener {
             Log.d(Const.TAG, "Set all lights off")
-            for (i in 0 until landingLightsText.size)
-                sendChange(tcp_extplane, "sim/cockpit2/switches/landing_lights_switch[$i]", 0.0f)
-            for (i in 0 until genericLightsText.size)
-                sendChange(tcp_extplane, "sim/cockpit2/switches/generic_lights_switch[$i]", 0.0f)
+            val onLandingLightsValues = FloatArray(landingLightsValues.size) { i -> 0.0f }
+            sendChangeArray(tcp_extplane, "sim/cockpit2/switches/landing_lights_switch", onLandingLightsValues)
+            val onGenericLightsValues = FloatArray(genericLightsValues.size) { i -> 0.0f }
+            sendChangeArray(tcp_extplane, "sim/cockpit2/switches/generic_lights_switch", onGenericLightsValues)
         }
 
         for (i in 0 until landingLightsText.size) {
@@ -229,7 +229,8 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
             t.setOnClickListener {
                 val inverted = 1.0f - landingLightsValues[i]
                 Log.d(Const.TAG, "Clicked landing_lights_switch[$i] from " + landingLightsValues[i] + " to new " + inverted)
-                sendChange(tcp_extplane, "sim/cockpit2/switches/landing_lights_switch[$i]", inverted)
+                landingLightsValues[i] = inverted
+                sendChangeArray(tcp_extplane, "sim/cockpit2/switches/landing_lights_switch", landingLightsValues)
             }
             landingLightsText[i] = t
         }
@@ -241,7 +242,8 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
             t.setOnClickListener {
                 val inverted = 1.0f - genericLightsValues[i]
                 Log.d(Const.TAG, "Clicked generic_lights_switch[$i] from " + genericLightsValues[i] + " to new " + inverted)
-                sendChange(tcp_extplane, "sim/cockpit2/switches/generic_lights_switch[$i]", inverted)
+                genericLightsValues[i] = inverted
+                sendChangeArray(tcp_extplane, "sim/cockpit2/switches/generic_lights_switch", genericLightsValues)
             }
             genericLightsText[i] = t
         }
@@ -374,12 +376,28 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
         }
     }
 
-    private fun sendRequest(tcpRef: TCPClient?, request: String) {
+    private fun sendMessage(tcpRef: TCPClient?, mesg: String) {
+        // Send the mesg on a separate thread
+        doBgThread {
+            if ((tcpRef != null) && (tcpRef == tcp_extplane) && connectWorking) {
+                tcpRef.writeln("$mesg")
+            } else {
+                Log.d(Const.TAG, "Ignoring message $mesg since TCP connection is not available")
+            }
+        }
+    }
+
+    private fun sendRequest(tcpRef: TCPClient?, request: String, resolution: Float = -1.0f) {
         // Send the request on a separate thread
         doBgThread {
             if ((tcpRef != null) && (tcpRef == tcp_extplane) && connectWorking) {
-                tcpRef.writeln("sub $request")
-                Log.d(Const.TAG, "sendRequest: sub $request")
+                if (resolution >= 0.0) {
+                    tcpRef.writeln("sub $request $resolution")
+                    Log.d(Const.TAG, "sendRequest: sub $request $resolution")
+                } else {
+                    tcpRef.writeln("sub $request")
+                    Log.d(Const.TAG, "sendRequest: sub $request")
+                }
             } else {
                 Log.d(Const.TAG, "Ignoring request for $request since TCP connection is not available")
             }
@@ -398,6 +416,18 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
         }
     }
 
+    private fun sendChangeArray(tcpRef: TCPClient?, dref: String, values: FloatArray) {
+        // Send the request on a separate thread
+        doBgThread {
+            if ((tcpRef != null) && (tcpRef == tcp_extplane) && connectWorking) {
+                val commaStr = values.joinToString(prefix = "[", postfix = "]", separator = ",")
+                tcpRef.writeln("set $dref $commaStr")
+                Log.d(Const.TAG, "sendChange: set $dref $commaStr")
+            } else {
+                Log.d(Const.TAG, "Ignoring request for $dref since TCP connection is not available")
+            }
+        }
+    }
 
     private fun setConnectionStatus(line1: String, line2: String, fixup: String, dest: String? = null) {
         Log.d(Const.TAG, "Changing connection status to [$line1][$line2][$fixup] with destination [$dest]")
@@ -558,14 +588,14 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
                 // Everything is working with actual data coming back.
                 // This is the last time we can put debug text on the CDU before it is overwritten
                 connectFailures = 0
-                setConnectionStatus("X-Plane CDU starting", "Check aircraft type", "Must find acf_tailnum", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
+                setConnectionStatus("X-PlaneMonitor starting", "Check aircraft type", "Must find acf_tailnum", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
                 connectWorking = true
             }
 
-            // If this is the first time we found a Zibo CDU dataref, then update the UI, this is the final step!
+            // If this is the first time we found a Zibo dataref, then update the UI, this is the final step!
             // TODO: This code should run when we receive a Zibo-specific dataref
             if (!connectZibo) {
-                setConnectionStatus("X-Plane CDU working", "", "", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
+                setConnectionStatus("X-PlaneMonitor working", "", "", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
                 connectZibo = true
             }
 
@@ -584,7 +614,7 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
                     if (decoded.toLowerCase().contains("zb73") != connectActTailnum.toLowerCase().contains("zb73")) {
                         // The aircraft tailnum has actually changed from before
                         if (decoded.toLowerCase().contains("zb73")) {
-                            setConnectionStatus("X-Plane CDU starting", "Starting subscription", "Must be Zibo 738", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
+                            // TODO: setConnectionStatus("X-Plane CDU starting", "Starting subscription", "Must be Zibo 738", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
 
                             // The aircraft has changed to the Zibo 738, so start the subscription process
                             doBgThread {
@@ -595,7 +625,7 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
                                 requestDatarefs()
                             }
                         } else {
-                            // The aircraft changed to something non-Zibo, so reset the CDU and wait for a new aircraft
+                            // The aircraft changed to something non-Zibo, so reset the display and wait for a new aircraft
                             connectZibo = false
                             resetDisplay()
                             setConnectionStatus("Waiting for Zibo 738", "Non-Zibo detected", "Change to Zibo 738", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
@@ -609,8 +639,20 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
                 }
             } else if ((tokens[0] == "ud") || (tokens[0] == "uf") || (tokens[0] == "ui")) {
                 val number = tokens[2].toFloat()
-                Log.d(Const.TAG, "Decoded number for name [${tokens[1]}] with value [$number]")
+                // Log.d(Const.TAG, "Decoded number for name [${tokens[1]}] with value [$number]")
                 processFloat(tokens[1], number)
+            } else if ((tokens[0] == "uda") || (tokens[0] == "ufa") || (tokens[0] == "uia")) {
+                var items = tokens[2]
+                if (items.startsWith('[') && items.endsWith(']')) {
+                    items = items.substring(1, items.length-1)
+                    val numbers = items.split(',')
+                    // Log.d(Const.TAG, "Decoded for name [${tokens[1]}] with values {$numbers} and ${numbers.size} items")
+                    for (i in numbers.indices) {
+                        processFloat(tokens[1], numbers[i].toFloat(), i)
+                    }
+                } else {
+                    Log.e(Const.TAG, "Did not find enclosing [ ] brackets in [${tokens[2]}]")
+                }
             } else {
                 Log.e(Const.TAG, "Unknown encoding type [${tokens[0]}] for name [${tokens[1]}]")
             }
@@ -746,25 +788,21 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
         sendRequest(tcp_extplane, "sim/cockpit2/controls/speedbrake_ratio")
         sendRequest(tcp_extplane, "sim/cockpit/warnings/annunciators/reverse")
         sendRequest(tcp_extplane, "sim/flightmodel/position/indicated_airspeed")
-        sendRequest(tcp_extplane, "sim/flightmodel/position/y_agl")
-        sendRequest(tcp_extplane, "sim/flightmodel/position/elevation")
-        sendRequest(tcp_extplane, "sim/cockpit2/gauges/indicators/altitude_ft_pilot")
+        sendRequest(tcp_extplane, "sim/flightmodel/position/y_agl", 1.0f)
+        sendRequest(tcp_extplane, "sim/flightmodel/position/elevation", 1.0f)
+        sendRequest(tcp_extplane, "sim/cockpit2/gauges/indicators/altitude_ft_pilot", 1.0f)
         sendRequest(tcp_extplane, "sim/cockpit2/controls/flap_handle_deploy_ratio")
         sendRequest(tcp_extplane, "sim/flightmodel/controls/flaprqst")
-        sendRequest(tcp_extplane, "sim/flightmodel2/gear/tire_vertical_force_n_mtr")
-        sendRequest(tcp_extplane, "sim/flightmodel/forces/g_nrml")
+        sendRequest(tcp_extplane, "sim/flightmodel2/gear/tire_vertical_force_n_mtr", 1000.0f)
+        sendRequest(tcp_extplane, "sim/flightmodel/forces/g_nrml", 0.01f)
         sendRequest(tcp_extplane, "sim/cockpit/radios/nav1_dme_dist_m")
         sendRequest(tcp_extplane, "sim/cockpit/radios/nav2_dme_dist_m")
-        sendRequest(tcp_extplane, "sim/flightmodel/position/vh_ind_fpm")
-        sendRequest(tcp_extplane, "sim/flightmodel/position/latitude")
-        sendRequest(tcp_extplane, "sim/flightmodel/position/longitude")
-        sendRequest(tcp_extplane, "sim/graphics/view/view_heading")
-
-        for (i in 0 until landingLightsText.size)
-            sendRequest(tcp_extplane, "sim/cockpit2/switches/landing_lights_switch[$i]")
-        for (i in 0 until genericLightsText.size)
-            sendRequest(tcp_extplane, "sim/cockpit2/switches/generic_lights_switch[$i]")
-
+        sendRequest(tcp_extplane, "sim/flightmodel/position/vh_ind_fpm", 0.01f)
+        sendRequest(tcp_extplane, "sim/flightmodel/position/latitude", 0.0001f)
+        sendRequest(tcp_extplane, "sim/flightmodel/position/longitude", 0.0001f)
+        sendRequest(tcp_extplane, "sim/graphics/view/view_heading", 1.0f)
+        sendRequest(tcp_extplane, "sim/cockpit2/switches/landing_lights_switch")
+        sendRequest(tcp_extplane, "sim/cockpit2/switches/generic_lights_switch")
         sendRequest(tcp_extplane, "laminar/B738/ice/window_heat_l_fwd_pos")
         sendRequest(tcp_extplane, "laminar/B738/ice/window_heat_r_fwd_pos")
         sendRequest(tcp_extplane, "laminar/B738/ice/window_heat_l_side_pos")
@@ -775,7 +813,7 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
         sendRequest(tcp_extplane, "laminar/B738/toggle_switch/seatbelt_sign_pos")
     }
 
-    private fun processFloat(name: String, value: Float) {
+    private fun processFloat(name: String, value: Float, index: Int = -1) {
         if (name == "sim/operation/misc/frame_rate_period") {
             if (value < 0.0001) {
                 itemFPS.text = "FPS\nn/a"
@@ -842,30 +880,26 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
             setItemString(itemHeading, "True Heading", oneDecimal.format(value.toDouble()) + "deg", false)
             globalHeading = value
             setItemMap(globalLatitude, globalLongitude, globalHeading)
-        } else if (name.startsWith("sim/cockpit2/switches/generic_lights_switch[")) {
-            // Extract out the number between [ ]
-            var s = name.substring(name.indexOf("[") + 1)
-            s = s.substring(0, s.indexOf("]"))
-            val n = s.toInt()
-            val t = genericLightsText[n]
-            t!!.setText("G$n")
-            if (value.toInt() > 0)
-                t.setBackgroundColor(Color.LTGRAY)
-            else
-                t.setBackgroundColor(Color.GRAY)
-            genericLightsValues[n] = value
-        } else if (name.startsWith("sim/cockpit2/switches/landing_lights_switch[")) {
-            // Extract out the number between [ ]
-            var s = name.substring(name.indexOf("[") + 1)
-            s = s.substring(0, s.indexOf("]"))
-            val n = s.toInt()
-            val t = landingLightsText[n]
-            t!!.setText("L$n")
-            if (value.toInt() > 0)
-                t.setBackgroundColor(Color.LTGRAY)
-            else
-                t.setBackgroundColor(Color.GRAY)
-            landingLightsValues[n] = value
+        } else if (name == "sim/cockpit2/switches/generic_lights_switch") {
+            if (index < genericLightsText.size) {
+                val t = genericLightsText[index]
+                t!!.setText("G$index")
+                if (value.toInt() > 0)
+                    t.setBackgroundColor(Color.LTGRAY)
+                else
+                    t.setBackgroundColor(Color.GRAY)
+                genericLightsValues[index] = value
+            }
+        } else if (name == "sim/cockpit2/switches/landing_lights_switch") {
+            if (index < landingLightsText.size) {
+                val t = landingLightsText[index]
+                t!!.setText("L$index")
+                if (value.toInt() > 0)
+                    t.setBackgroundColor(Color.LTGRAY)
+                else
+                    t.setBackgroundColor(Color.GRAY)
+                landingLightsValues[index] = value
+            }
         } else if (name == "laminar/B738/EFIS_control/capt/map_mode_pos") {
             val mode: String
             if (value.toInt() == 0)

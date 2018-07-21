@@ -130,7 +130,7 @@ class TCPClient (private var address: InetAddress, private var port: Int, privat
                 Log.d(Const.TAG, "readLine returned null, connection has failed")
                 cancelled = true
             } else {
-                Log.d(Const.TAG, "TCP returned line [$line]")
+                // Log.d(Const.TAG, "TCP returned line [$line]")
                 MainActivity.doUiThread { callback.onReceiveTCP(line, this) }
             }
         }
