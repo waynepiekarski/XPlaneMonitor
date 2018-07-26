@@ -56,7 +56,7 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
     private var connectAddress: String? = null
     private var manualAddress: String = ""
     private var manualInetAddress: InetAddress? = null
-    private var connectZibo = false
+    private var connectSupported = false
     private var connectActTailnum: String = ""
     private var connectWorking = false
     private var connectShutdown = false
@@ -450,7 +450,7 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
         setConnectionStatus("Closing down network", "", "Wait a few seconds")
         connectAddress = null
         connectWorking = false
-        connectZibo = false
+        connectSupported = false
         connectActTailnum = ""
         if (tcp_extplane != null) {
             Log.d(Const.TAG, "Cleaning up any TCP connections")
@@ -576,7 +576,7 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
             Log.d(Const.TAG, "Found ExtPlane welcome message, will now make subscription requests for aircraft info")
             setConnectionStatus("Received EXTPLANE", "Sending acf subscribe", "Start your flight", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
 
-            // Make requests for aircraft type messages so we can detect when the Zibo 738 is available,
+            // Make requests for aircraft type messages so we can detect when the aircraft is actually available,
             // the datarefs do not exist until the aircraft is loaded and in use
             doBgThread {
                 tcpRef.writeln("sub sim/aircraft/view/acf_tailnum")
@@ -584,19 +584,12 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
         } else {
             // Log.d(Const.TAG, "Received TCP line [$line]")
             if (!connectWorking) {
-                check(!connectZibo) { "connectZibo should not be set if connectWorking is not set" }
+                check(!connectSupported) { "connectSupported should not be set if connectWorking is not set" }
                 // Everything is working with actual data coming back.
                 // This is the last time we can put debug text on the CDU before it is overwritten
                 connectFailures = 0
                 setConnectionStatus("X-PlaneMonitor starting", "Check aircraft type", "Must find acf_tailnum", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
                 connectWorking = true
-            }
-
-            // If this is the first time we found a Zibo dataref, then update the UI, this is the final step!
-            // TODO: This code should run when we receive a Zibo-specific dataref
-            if (!connectZibo) {
-                setConnectionStatus("X-PlaneMonitor working", "", "", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
-                connectZibo = true
             }
 
             val tokens = line.split(" ")
@@ -607,32 +600,24 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
 
                 Log.d(Const.TAG, "Decoded byte array for name [${tokens[1]}] with string [$decoded]")
 
-                // We have received acf_tailnum, so the aircraft has changed, and this will indicate if it is a Zibo-variant aircraft
+                // We have received a change in acf_tailnum. If we have never seen any aircraft before, then start
+                // the subscriptions. If we have seen a previous aircraft, then reset the network and UI to start fresh
                 if (tokens[1] == "sim/aircraft/view/acf_tailnum") {
-                    // Has the Zibo-state of the tailnum changed? If we switch from one variant to another, we should not redo the subscriptions
-                    // because it will reset the display while incoming changes are arriving.
-                    if (decoded.toLowerCase().contains("zb73") != connectActTailnum.toLowerCase().contains("zb73")) {
-                        // The aircraft tailnum has actually changed from before
-                        if (decoded.toLowerCase().contains("zb73")) {
-                            // TODO: setConnectionStatus("X-Plane CDU starting", "Starting subscription", "Must be Zibo 738", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
-
-                            // The aircraft has changed to the Zibo 738, so start the subscription process
-                            doBgThread {
-                                Log.d(Const.TAG, "Sending subscriptions for Zibo 738 datarefs now that it is running")
-                                // TODO: Request Zibo specific datarefs here
-
-                                // Request all the datarefs we are interested in
-                                requestDatarefs()
-                            }
-                        } else {
-                            // The aircraft changed to something non-Zibo, so reset the display and wait for a new aircraft
-                            connectZibo = false
-                            resetDisplay()
-                            setConnectionStatus("Waiting for Zibo 738", "Non-Zibo detected", "Change to Zibo 738", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
-                        }
+                    if (connectActTailnum == "") {
+                        // No previous aircraft during this connection
                         connectActTailnum = decoded
+                        connectSupported = true
+                        setConnectionStatus("X-PlaneMonitor working", "${connectActTailnum}", "", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
+
+                        doBgThread {
+                            Log.d(Const.TAG, "Detected aircraft change from nothing to [$decoded], so sending subscriptions")
+                            requestDatarefs()
+                        }
                     } else {
-                        Log.d(Const.TAG, "acf_tailnum updated, but no change from previous [$connectActTailnum]")
+                        // Currently handling another aircraft, so reset everything
+                        Log.d(Const.TAG, "Detected aircraft change from [$connectActTailnum] to [$decoded], so resetting UI and connection")
+                        resetDisplay()
+                        restartNetworking()
                     }
                 } else {
                     Log.d(Const.TAG, "Found unused result name [${tokens[1]}] with string [$fixed]")
