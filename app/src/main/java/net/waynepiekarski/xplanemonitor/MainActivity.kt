@@ -613,6 +613,10 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
                             Log.d(Const.TAG, "Detected aircraft change from nothing to [$decoded], so sending subscriptions")
                             requestDatarefs()
                         }
+                    } else if (connectActTailnum == decoded) {
+                        // acf_tailnum was sent to us with the same value. This can happen if a second device connects
+                        // via ExtPlane, and it updates all listeners with the latest value. We can safely ignore this.
+                        Log.d(Const.TAG, "Detected aircraft update which is the same [$connectActTailnum], but ignoring since nothing has changed")
                     } else {
                         // Currently handling another aircraft, so reset everything
                         Log.d(Const.TAG, "Detected aircraft change from [$connectActTailnum] to [$decoded], so resetting UI and connection")
