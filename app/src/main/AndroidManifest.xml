@@ -5,6 +5,10 @@
     <!-- Need to send and receive UDP datagrams -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Support Android TV and do not require a touchscreen -->
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -17,14 +21,15 @@
             android:value="AIzaSyDLmIJl7bMZ3fRFS3H2KNRHF24W1gCujMI"/>
 
         <activity android:name=".MainActivity"
-            android:configChanges="keyboardHidden|orientation|screenSize"
-            >
+            android:configChanges="keyboardHidden|orientation|screenSize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+
+
     </application>
 
 </manifest>
