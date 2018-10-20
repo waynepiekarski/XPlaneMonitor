@@ -789,7 +789,7 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
         sendRequest(tcp_extplane, "sim/flightmodel/position/vh_ind_fpm")
         sendRequest(tcp_extplane, "sim/flightmodel/position/latitude")
         sendRequest(tcp_extplane, "sim/flightmodel/position/longitude")
-        sendRequest(tcp_extplane, "sim/graphics/view/view_heading")
+        sendRequest(tcp_extplane, "sim/cockpit2/gauges/indicators/compass_heading_deg_mag")
         sendRequest(tcp_extplane, "sim/cockpit2/switches/landing_lights_switch")
         sendRequest(tcp_extplane, "sim/cockpit2/switches/generic_lights_switch")
         sendRequest(tcp_extplane, "laminar/B738/ice/window_heat_l_fwd_pos")
@@ -865,8 +865,8 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
         } else if (name == "sim/flightmodel/position/longitude") {
             globalLongitude = value
             setItemMap(globalLatitude, globalLongitude, globalHeading)
-        } else if (name == "sim/graphics/view/view_heading") {
-            setItemString(itemHeading, "True Heading", oneDecimal.format(value.toDouble()) + "deg", false)
+        } else if (name == "sim/cockpit2/gauges/indicators/compass_heading_deg_mag") {
+            setItemString(itemHeading, "Mag Heading", zeroDecimal.format(value.toDouble()) + "deg", false)
             globalHeading = value
             setItemMap(globalLatitude, globalLongitude, globalHeading)
         } else if (name == "sim/cockpit2/switches/generic_lights_switch") {
