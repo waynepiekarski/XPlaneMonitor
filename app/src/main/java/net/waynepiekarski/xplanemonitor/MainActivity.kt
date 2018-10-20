@@ -74,6 +74,7 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
     internal var globalLatitude = 0.0f
     internal var globalLongitude = 0.0f
     internal var globalHeading = 0.0f
+    internal var globalMapZoom = 0
 
     internal var globalAirspeed = 0.0f
     internal var globalNav1Distance = 0.0f
@@ -138,6 +139,25 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
         versionText.setOnClickListener {
             Log.d(Const.TAG, "Popup for manual hostname")
             popupManualHostname()
+        }
+
+        layoutMap_maphybrid.setOnClickListener {
+            googleMap.setMapType(GoogleMap.MAP_TYPE_HYBRID)
+        }
+        layoutMap_mapsatellite.setOnClickListener {
+            googleMap.setMapType(GoogleMap.MAP_TYPE_SATELLITE)
+        }
+        layoutMap_mapnormal.setOnClickListener {
+            googleMap.setMapType(GoogleMap.MAP_TYPE_NORMAL)
+        }
+        layoutMap_mapterrain.setOnClickListener {
+            googleMap.setMapType(GoogleMap.MAP_TYPE_TERRAIN)
+        }
+        layoutMap_zoomin.setOnClickListener {
+            googleMap.moveCamera(CameraUpdateFactory.zoomBy(1.0f))
+        }
+        layoutMap_zoomout.setOnClickListener {
+            googleMap.moveCamera(CameraUpdateFactory.zoomBy(-1.0f))
         }
 
         fun button_to_cmnd(view: View, cmnd: String) {
@@ -282,6 +302,7 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
             val pos = LatLng(0.0, 0.0) // Move the map to a default origin
             googleMap.moveCamera(CameraUpdateFactory.newLatLng(pos))
             googleMap.moveCamera(CameraUpdateFactory.zoomTo(10.0f))
+            googleMap.setMapType(GoogleMap.MAP_TYPE_TERRAIN)
         }
     }
 
