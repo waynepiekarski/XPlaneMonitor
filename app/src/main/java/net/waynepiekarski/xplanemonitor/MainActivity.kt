@@ -598,10 +598,13 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
             Log.d(Const.TAG, "Found ExtPlane welcome message, will now make subscription requests for aircraft info")
             setConnectionStatus("Received EXTPLANE", "Sending acf subscribe", "Start your flight", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
 
-            // Make requests for aircraft type messages so we can detect when the aircraft is actually available,
-            // the datarefs do not exist until the aircraft is loaded and in use
             doBgThread {
+                // Make requests for aircraft type messages so we can detect when the aircraft is actually available,
+                // the datarefs do not exist until the aircraft is loaded and in use
                 tcpRef.writeln("sub sim/aircraft/view/acf_tailnum")
+
+                // EXTPLANE sprays out data at a very high speed by default, so reduce the rate to something more reasonable
+                tcpRef.writeln("extplane-set update_interval 0.5")
             }
         } else {
             // Log.d(Const.TAG, "Received TCP line [$line]")
