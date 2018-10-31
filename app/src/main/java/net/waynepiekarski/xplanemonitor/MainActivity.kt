@@ -140,9 +140,9 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
             popupManualHostname()
         }
 
-        fun button_to_cmnd(button: Button, cmnd: String) {
-            button.setOnClickListener {
-                Log.d(Const.TAG, "Sending button command $cmnd")
+        fun button_to_cmnd(view: View, cmnd: String) {
+            view.setOnClickListener {
+                Log.d(Const.TAG, "Sending view command $cmnd")
                 sendCommand(tcp_extplane, cmnd)
             }
         }
@@ -269,6 +269,7 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
         button_to_cmnd(seatbelt_sign_up, "laminar/B738/toggle_switch/seatbelt_sign_up")
         button_to_cmnd(seatbelt_sign_dn, "laminar/B738/toggle_switch/seatbelt_sign_dn")
         button_to_cmnd(attend, "laminar/B738/push_button/attend")
+        button_to_cmnd(itemPaused, "sim/operation/pause_toggle")
 
         // Reset display elements to a known state
         resetIndicators()
@@ -770,7 +771,7 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
 
         sendRequest(tcp_extplane, "1-sim/ndpanel/1/hsiModeButton")                // CTR FF767, no equivalent state on ZB737 or XP737
 
-        sendRequest(tcp_extplane, "sim/operation/misc/frame_rate_period")
+        sendRequest(tcp_extplane, "sim/time/paused")
         sendRequest(tcp_extplane, "sim/cockpit2/controls/left_brake_ratio")
         sendRequest(tcp_extplane, "sim/cockpit2/controls/right_brake_ratio")
         sendRequest(tcp_extplane, "sim/cockpit2/controls/parking_brake_ratio")
@@ -803,13 +804,13 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
     }
 
     private fun processFloat(name: String, value: Float, index: Int = -1) {
-        if (name == "sim/operation/misc/frame_rate_period") {
-            if (value < 0.0001) {
-                itemFPS.text = "FPS\nn/a"
-                itemFPS.setBackgroundColor(Color.GRAY)
+        if (name == "sim/time/paused") {
+            if (value < 1.0) {
+                itemPaused.text = "Running\nXP11"
+                itemPaused.setBackgroundColor(Color.GREEN)
             } else {
-                itemFPS.text = "FPS\n" + oneDecimal.format((1.0f / value).toDouble())
-                itemFPS.setBackgroundColor(Color.GREEN)
+                itemPaused.text = "PAUSED\nXP11"
+                itemPaused.setBackgroundColor(Color.RED)
             }
         } else if (name == "sim/cockpit2/controls/left_brake_ratio") {
             setBrakePercent(itemLeftBrake, "Left Brake", value)
