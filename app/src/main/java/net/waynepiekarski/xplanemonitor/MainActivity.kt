@@ -35,6 +35,7 @@ import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
+import android.widget.Toast
 
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -61,6 +62,8 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
     private var connectWorking = false
     private var connectShutdown = false
     private var connectFailures = 0
+    private var connectExtplaneVersion = -1
+    private var connectExtplaneWarning = ""
 
     internal var fourDecimal = DecimalFormat("0.0000")
     internal var oneDecimal = DecimalFormat("0.0")
@@ -181,7 +184,7 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
             val efis_mode_next = if(efis_mode_state >= 3) 0 else efis_mode_state+1
             efis_mode_state = efis_mode_next
             Log.d(Const.TAG, "Change EFIS mode to $efis_mode_next from $efis_mode_prev")
-            sendChange(tcp_extplane, "1-sim/ndpanel/1/hsiModeRotary", efis_mode_state.toFloat()) // XP737
+            sendChange(tcp_extplane, "1-sim/ndpanel/1/hsiModeRotary", efis_mode_state.toFloat()) // XP737 (this is really for FF767?)
             var rewrite = efis_mode_next
             if (rewrite == 3)
                 rewrite = 4
@@ -474,6 +477,8 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
         connectWorking = false
         connectSupported = false
         connectActTailnum = ""
+        connectExtplaneVersion = -1
+        connectExtplaneWarning = ""
         if (tcp_extplane != null) {
             Log.d(Const.TAG, "Cleaning up any TCP connections")
             tcp_extplane!!.stopListener()
@@ -603,15 +608,39 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
             doBgThread {
                 tcpRef.writeln("sub sim/aircraft/view/acf_tailnum")
             }
+        } else if (line.startsWith("EXTPLANE-VERSION ")) {
+            // This is a new header introduced in newer ExtPlane plugins. It will not happen with
+            // older versions, so we cannot require this. We store this version number, and later on
+            // when the datarefs arrive, we should pop up a warning if we detect the plugin is old.
+            // The EXTPLANE-VERSION message is in the header and guaranteed to arrive before connectWorking is true.
+            val tokens = line.split(" ")
+            connectExtplaneVersion = tokens[1].toInt()
+            Log.d(Const.TAG, "Found ExtPlane feature version $connectExtplaneVersion")
+
+            if (connectExtplaneVersion < Const.MIN_EXTPLANE_VERSION) {
+                Log.w(Const.TAG, "EXTPLANE-VERSION detected $connectExtplaneVersion is older than expected ${Const.MIN_EXTPLANE_VERSION}")
+                Toast.makeText(this, "ExtPlane plugin is out of date, requires version ${Const.MIN_EXTPLANE_VERSION} but found $connectExtplaneVersion.\nDownload the latest from http://waynepiekarski.net/ExtPlane", Toast.LENGTH_LONG).show()
+                connectExtplaneWarning = ". Old ExtPlane plugin $connectExtplaneVersion."
+            }
+
+            setConnectionStatus("Received EXTPLANE-VER", "Sending acf subscribe", "Start your flight", "$connectAddress:${Const.TCP_EXTPLANE_PORT}$connectExtplaneWarning")
         } else {
             // Log.d(Const.TAG, "Received TCP line [$line]")
             if (!connectWorking) {
                 check(!connectSupported) { "connectSupported should not be set if connectWorking is not set" }
                 // Everything is working with actual data coming back.
-                // This is the last time we can put debug text on the CDU before it is overwritten
                 connectFailures = 0
-                setConnectionStatus("X-PlaneMonitor starting", "Check aircraft type", "Must find acf_tailnum", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
                 connectWorking = true
+
+                // If the ExtPlane plugin does not emit EXTPLANE-VERSION, then this is the first opportunity to detect it
+                if (connectExtplaneVersion <= 0) {
+                    Log.w(Const.TAG, "No EXTPLANE-VERSION header detected, so plugin is an unknown old version")
+                    Toast.makeText(this, "ExtPlane plugin is out of date, requires version ${Const.MIN_EXTPLANE_VERSION}.\nDownload the latest from http://waynepiekarski.net/ExtPlane", Toast.LENGTH_LONG).show()
+                    connectExtplaneWarning = ". Old ExtPlane plugin."
+                }
+
+                // This is the last time we can put debug text on the CDU before it is overwritten
+                setConnectionStatus("X-PlaneMonitor starting", "Waiting acf_descrip", "Must find acf_tailnum", "$connectAddress:${Const.TCP_EXTPLANE_PORT}$connectExtplaneWarning")
             }
 
             val tokens = line.split(" ")
@@ -629,7 +658,7 @@ class MainActivity : Activity(), TCPClient.OnTCPEvent, MulticastReceiver.OnRecei
                         // No previous aircraft during this connection
                         connectActTailnum = decoded
                         connectSupported = true
-                        setConnectionStatus("X-PlaneMonitor working", "${connectActTailnum}", "", "$connectAddress:${Const.TCP_EXTPLANE_PORT}")
+                        setConnectionStatus("X-PlaneMonitor working", "${connectActTailnum}", "", "$connectAddress:${Const.TCP_EXTPLANE_PORT}$connectExtplaneWarning")
 
                         doBgThread {
                             Log.d(Const.TAG, "Detected aircraft change from nothing to [$decoded], so sending subscriptions")

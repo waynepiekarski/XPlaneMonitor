@@ -25,6 +25,7 @@ package net.waynepiekarski.xplanemonitor
 object Const {
     val TAG = "XPlaneMonitor"
     val TCP_EXTPLANE_PORT = 51000
+    val MIN_EXTPLANE_VERSION = 1000 // EXTPLANE-VERSION value should be greater or equal than this to avoid warnings
     val BECN_PORT = 49707
     val BECN_ADDRESS = "239.255.1.1"
     val METERS_TO_FEET = 3.28084f
