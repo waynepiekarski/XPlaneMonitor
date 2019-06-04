@@ -20,31 +20,44 @@
 //
 // ---------------------------------------------------------------------
 
-
 XPlaneMonitor is an Android application that interfaces with X-Plane 11.
 
-This app displays flight info about the brakes, flaps, landing gear, 
-reverse thrust, G-forces, time and distance to NAV1, without having to 
+This app displays flight info about the brakes, flaps, landing gear,
+reverse thrust, G-forces, time and distance to NAV1, without having to
 look around the cockpit.
 
-It also has buttons to turn on and off all lights, and adjust all the 
-settings for the EFIS map display. It works with the X-Plane and Zibo 737,
-and the Flight Factor 767. It also implements protocol conversion so you
-can use the Flight Factor 767 with XHSI displays, which normally doesn't
-support the 767.
+It also has buttons to turn on and off all lights, and adjust all the
+settings for the EFIS map display. It works with most X-Plane 11
+aircraft, including the default 737/747, Zibo's 738, SSG's 747, and many
+others. It also implements protocol conversion so you can use the Flight
+Factor 767 with XHSI displays, which normally doesn't support the 767.
 
 There is also a moving map showing the current aircraft location.
 
-This app does not need any plugin, it requests everything from an 
-X-Plane discovered via BECN broadcasts, and uses the standard UDP 
-protocol.
+XPlaneMonitor will auto-detect your X-Plane instance assuming that
+multicast is working. Many routers do not support multicast properly,
+and so you can tap on the Auto BECN button to configure a manual X-Plane
+hostname or IP address.
 
-You can download the app directly to your Android device from the Google 
-Play store: 
-https://play.google.com/store/apps/details?id=net.waynepiekarski.xplanemonitor
+You must have the ExtPlane v2 plugin installed in your X-Plane 11
+Resources/plugins directory. This plugin uses port 51000 to provide
+external control capabilities, so you must make sure that Windows
+firewall is not blocking it. You must download the binaries for the
+plugin from http://waynepiekarski.net/extplane - you cannot use the
+original ExtPlane v1 plugin because it has bugs related to string
+datarefs.
 
-This application is open source, written in Kotlin, and released under the GNU Public License 
-version 3 (GPLv3).
+The source code is available under GPLv3 at
+https://github.com/waynepiekarski/XPlaneMonitor - it is written in
+Kotlin and is built with Android Studio. The plugin source code is
+https://github.com/waynepiekarski/ExtPlane and is forked from the
+original code at https://github.com/vranki/ExtPlane (licensed under
+GPLv3).
 
-This is an early prototype and I look forward to feedback on any 
-problems. File bugs or comments here on GitHub.
+This is an early prototype and I look forward to feedback on any
+problems. Visit the GitHub page to file bugs
+https://github.com/waynepiekarski/XPlaneMonitor
+
+Remember: extract the plugin from http://waynepiekarski.net/extplane
+into your Resources/plugins directory, and make sure port 51000 is not
+blocked by the Windows firewall.
