@@ -31,8 +31,6 @@ import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.View
 
-import junit.framework.Assert
-
 class GraphView(context: Context, attrs: AttributeSet) : View(context, attrs) {
 
     private val foreground = Paint()
@@ -121,14 +119,14 @@ class GraphView(context: Context, attrs: AttributeSet) : View(context, attrs) {
     }
 
     fun setValues(arg: FloatArray) {
-        Assert.assertEquals("Mismatch between incoming length " + current.size + " with existing " + arg.size, min(arg.size, palette.size), current.size)
+        assert(min(arg.size, palette.size) == current.size) {"Mismatch between incoming length " + current.size + " with existing " + arg.size }
         for (i in 0 until min(arg.size, palette.size))
             current[i] = arg[i].toDouble()
         invalidate()
     }
 
     fun set1Value(arg: Double) {
-        Assert.assertEquals("Mismatch between incoming length " + current.size + " with existing 1", 1, current.size)
+        assert(1 == current.size) { "Mismatch between incoming length " + current.size + " with existing 1" }
         current[0] = arg
         invalidate()
     }
