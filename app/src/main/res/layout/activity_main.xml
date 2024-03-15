@@ -41,6 +41,7 @@
         <ImageView
             android:layout_width="44dp"
             android:layout_height="44dp"
+            android:contentDescription="@string/app_name"
             android:src="@mipmap/ic_launcher" />
 
         <Button
@@ -49,7 +50,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Detect" />
+            android:text="@string/detect" />
 
         <Button
             android:id="@+id/switchMainButton"
@@ -57,23 +58,23 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Main" />
+            android:text="@string/main" />
 
         <Button
-            style="@android:style/Widget.Button.Small"
             android:id="@+id/switchAboutButton"
+            style="@android:style/Widget.Button.Small"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="About" />
+            android:text="@string/about" />
 
         <Button
-            style="@android:style/Widget.Button.Small"
             android:id="@+id/switchMapButton"
+            style="@android:style/Widget.Button.Small"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Map" />
+            android:text="@string/map" />
 
     </LinearLayout>
 
@@ -295,7 +296,7 @@
                 android:layout_height="wrap_content"
                 android:layout_centerHorizontal="true"
                 android:layout_weight="0"
-                android:text="Lights-On" />
+                android:text="@string/lights_on" />
 
             <Button
                 android:id="@+id/all_lights_off"
@@ -304,7 +305,7 @@
                 android:layout_height="wrap_content"
                 android:layout_centerHorizontal="true"
                 android:layout_weight="0"
-                android:text="Off" />
+                android:text="@string/lights_off" />
 
         </LinearLayout>
 
@@ -329,7 +330,7 @@
                 android:layout_height="wrap_content"
                 android:layout_centerHorizontal="true"
                 android:layout_weight="1"
-                android:text="Z+" />
+                android:text="@string/z_plus" />
 
             <Button
                 android:id="@+id/map_zoom_range"
@@ -339,7 +340,7 @@
                 android:layout_centerHorizontal="true"
                 android:layout_weight="0"
                 android:singleLine="true"
-                android:text="Map Range" />
+                android:text="@string/map_range" />
 
             <net.waynepiekarski.xplanemonitor.XButton
                 android:id="@+id/map_zoom_out"
@@ -348,7 +349,7 @@
                 android:layout_height="wrap_content"
                 android:layout_centerHorizontal="true"
                 android:layout_weight="1"
-                android:text="Z-" />
+                android:text="@string/z_minus" />
 
             <net.waynepiekarski.xplanemonitor.XButton
                 android:id="@+id/efis_button_tfc"
@@ -356,7 +357,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="TFC" />
+                android:text="@string/tfc" />
 
             <net.waynepiekarski.xplanemonitor.XButton
                 android:id="@+id/efis_button_ctr"
@@ -364,7 +365,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="CTR" />
+                android:text="@string/ctr" />
 
             <net.waynepiekarski.xplanemonitor.XButton
                 android:id="@+id/efis_button_wxr"
@@ -372,7 +373,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="WXR" />
+                android:text="@string/wxr" />
 
             <net.waynepiekarski.xplanemonitor.XButton
                 android:id="@+id/efis_button_sta"
@@ -380,7 +381,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="STA" />
+                android:text="@string/sta" />
 
             <net.waynepiekarski.xplanemonitor.XButton
                 android:id="@+id/efis_button_wpt"
@@ -388,7 +389,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="WPT" />
+                android:text="@string/wpt" />
 
             <net.waynepiekarski.xplanemonitor.XButton
                 android:id="@+id/efis_button_arpt"
@@ -396,7 +397,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="ARPT" />
+                android:text="@string/arpt" />
 
             <net.waynepiekarski.xplanemonitor.XButton
                 android:id="@+id/efis_button_data"
@@ -404,7 +405,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="DATA" />
+                android:text="@string/data" />
 
             <net.waynepiekarski.xplanemonitor.XButton
                 android:id="@+id/efis_button_pos"
@@ -412,7 +413,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="POS" />
+                android:text="@string/pos" />
 
             <net.waynepiekarski.xplanemonitor.XButton
                 android:id="@+id/efis_button_terr"
@@ -420,7 +421,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="TERR" />
+                android:text="@string/terr" />
         </LinearLayout>
 
         <LinearLayout
@@ -435,7 +436,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="0"
                 android:singleLine="true"
-                android:text="HLS" />
+                android:text="@string/hls" />
 
             <net.waynepiekarski.xplanemonitor.XButton
                 android:id="@+id/window_heat_l_fwd"
@@ -444,7 +445,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="0"
                 android:singleLine="true"
-                android:text="HLF" />
+                android:text="@string/hlf" />
 
             <net.waynepiekarski.xplanemonitor.XButton
                 android:id="@+id/window_heat_r_fwd"
@@ -453,7 +454,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="0"
                 android:singleLine="true"
-                android:text="HRF" />
+                android:text="@string/hrf" />
 
             <net.waynepiekarski.xplanemonitor.XButton
                 android:id="@+id/window_heat_r_side"
@@ -462,7 +463,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="0"
                 android:singleLine="true"
-                android:text="HRS" />
+                android:text="@string/hrs" />
 
             <net.waynepiekarski.xplanemonitor.XButton
                 android:id="@+id/capt_probes_pos"
@@ -471,7 +472,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="0"
                 android:singleLine="true"
-                android:text="CPrb" />
+                android:text="@string/cprb" />
 
             <net.waynepiekarski.xplanemonitor.XButton
                 android:id="@+id/fo_probes_pos"
@@ -480,7 +481,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="0"
                 android:singleLine="true"
-                android:text="FOPrb" />
+                android:text="@string/foprb" />
 
             <Button
                 android:id="@+id/flt_alt_up"
@@ -489,7 +490,7 @@
                 android:layout_height="wrap_content"
                 android:layout_centerHorizontal="true"
                 android:layout_weight="1"
-                android:text="+" />
+                android:text="@string/plus" />
 
             <Button
                 android:id="@+id/flt_alt_actual"
@@ -498,7 +499,7 @@
                 android:layout_height="wrap_content"
                 android:layout_centerHorizontal="true"
                 android:layout_weight="0"
-                android:text="n/a" />
+                android:text="@string/na" />
 
             <Button
                 android:id="@+id/flt_alt_dn"
@@ -507,7 +508,7 @@
                 android:layout_height="wrap_content"
                 android:layout_centerHorizontal="true"
                 android:layout_weight="1"
-                android:text="-" />
+                android:text="@string/minus" />
 
             <Button
                 android:id="@+id/seatbelt_sign_up"
@@ -517,7 +518,7 @@
                 android:layout_centerHorizontal="true"
                 android:layout_weight="1"
                 android:singleLine="true"
-                android:text="-" />
+                android:text="@string/minus" />
 
             <Button
                 android:id="@+id/seatbelt_sign"
@@ -527,7 +528,7 @@
                 android:layout_centerHorizontal="true"
                 android:layout_weight="0"
                 android:singleLine="true"
-                android:text="n/a" />
+                android:text="@string/na" />
 
             <Button
                 android:id="@+id/seatbelt_sign_dn"
@@ -537,7 +538,7 @@
                 android:layout_centerHorizontal="true"
                 android:layout_weight="1"
                 android:singleLine="true"
-                android:text="+" />
+                android:text="@string/plus" />
 
             <Button
                 android:id="@+id/attend"
@@ -547,7 +548,7 @@
                 android:layout_centerHorizontal="true"
                 android:layout_weight="0"
                 android:singleLine="true"
-                android:text="Att" />
+                android:text="@string/att" />
         </LinearLayout>
 
         <net.waynepiekarski.xplanemonitor.BarView
