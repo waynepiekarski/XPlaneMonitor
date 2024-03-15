@@ -32,6 +32,12 @@ object Const {
     val ERROR_NETWORK_SLEEP: Long = 1000 // Number of msec to wait on network failure
     val ERROR_MULTICAST_LOOPS = 5 // Number of loops (seconds) before we give up and restart the socket
 
+    const val EXTPLANE1 = "EXTPLANE 1"
+    const val EXTPLANE_VERSION = "EXTPLANE-VERSION "
+
+    // Settings
+    const val MANUAL_ADDRESS_KEY = "manual_address"
+
     fun getBuildId(): Int { return BuildConfig.VERSION_CODE }
     fun getBuildVersion(): String { return BuildConfig.VERSION_NAME }
 
